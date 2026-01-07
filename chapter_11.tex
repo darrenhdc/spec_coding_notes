@@ -1,6 +1,7 @@
-% chapter_11.tex
-% 工程连续性与 Spec-Coding 实践
+% chapter_11.tex - 工程连续性与 Context 机制
 \small
+
+\chapter{工程连续性与 Context 机制}
 
 \section{工程连续性与会话连续性}
 
@@ -348,6 +349,40 @@ Supersedes:
   \item 设计"agent 必须引用 CURRENT.md 才能执行"的硬约束
 \end{itemize}
 
+\section{Copilot Todo List 的本质}
+
+\subsection{Todo List 的真实属性}
+
+Copilot 的 todo list 本质是：编辑器插件维护的 UI 状态 / 任务提示，而不是：
+\begin{itemize}
+  \item Git 中的文件
+  \item 云端工程文档
+  \item 项目级 spec
+\end{itemize}
+
+Copilot 的 todo list $\neq$ LLM 的"长期记忆" $\neq$ /resume 的恢复对象。
+
+它更像是 VS Code 插件在当前 workspace、当前 session 或插件本地缓存里维护的一份状态。
+
+\subsection{Todo List 能否通过 /resume 恢复？}
+
+\textbf{不能保证，通常也不应该指望。}
+
+如果 todo 是你们在聊天中明确列出来的，/resume 可能"接着聊下去"；但如果 todo 是 Copilot UI 自动生成的、插件状态、没有写进 repo / 文档，那它和 /resume 没有工程级关系。
+
+\subsection{AI 是否有"云端文档仓库"？}
+
+在目前这些工具里（Claude / Copilot / droid），没有一个对用户开放、可审计的"AI 项目文档仓库"。如果有，那一定是明确告诉你存在哪里、怎么导出、怎么版本控制。否则都不是工程级存储。
+
+\subsection{可审计性判断}
+
+以后你看到任何"AI 帮你记住了 X"，问一句："我现在能不能把它导出、commit、review？"
+
+\begin{itemize}
+  \item ✅ 能 $\to$ 工程资产
+  \item ❌ 不能 $\to$ 会话幻觉
+\end{itemize}
+
 \section{工具选择：AI Agent 与古法 Vibe}
 
 \subsection{适用场景分析}
@@ -421,3 +456,6 @@ AI agent 的知识几乎必然是"滞后 + 混合态"的。即使能查库，AI 
 Spec-coding + agent + 自动化 + 多文件协作，与单点接口 + 高频变更 + 模型行为一致性，面对的是两个完全不同的工程地形。在接口频繁变化、行为靠源码定义、错误不显性的模型库里，AI agent 的不确定性会被放大。经验工程师选择古法开发，不是保守，而是风控。
 
 在外围 glue/实验代码/pipeline 生成上，AI 仍然有价值。问题不在工具本身，而在选择合适的工具用于合适的场景。
+
+\vspace{1em}
+\normalsize

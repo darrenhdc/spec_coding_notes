@@ -1,13 +1,15 @@
-% chapter_01.tex
+% chapter_01.tex - Spec Coding 基础
 \small
 
-\chapter{Spec Coding 与 Vibe Coding：工程范式的演进}
+\chapter{Spec Coding 基础}
 
-\section{核心概念}
+\section{Spec Coding 与 Vibe Coding：工程范式的演进}
+
+\subsection{核心概念}
 
 Vibe coding 是「生成方式」，Spec coding 是「约束方式」；它们不是对立关系，而是同一条工程成熟度曲线上的不同阶段。Vibe coding 解决的是：怎么快；Spec coding 解决的是：怎么不出事。
 
-\subsection{Vibe Coding 本质}
+\subsubsection{Vibe Coding 本质}
 
 Vibe coding $\neq$ 不写规范。它的本质是：在不完全明确需求的情况下，通过人与模型的「感觉对齐」，快速逼近可用实现。
 
@@ -15,7 +17,7 @@ Vibe coding $\neq$ 不写规范。它的本质是：在不完全明确需求的�
 
 常见场景：原型验证、Hackathon、个人项目、探索性功能、UI/UX 草图。
 
-\subsection{Spec Coding 本质}
+\subsubsection{Spec Coding 本质}
 
 Spec coding 不是传统意义上的「写文档」，而是：把「你脑子里的隐性约束」显式化，强迫模型在一个受控空间里生成代码。
 
@@ -23,7 +25,7 @@ Spec coding 不是传统意义上的「写文档」，而是：把「你脑子�
 
 常见场景：核心业务逻辑、金融/医疗/安全相关代码、多人协作、长期维护项目、自动化测试/CI。
 
-\subsection{阶段切换关系}
+\subsubsection{阶段切换关系}
 
 成熟团队的真实流程是：Vibe $\to$ 半 Spec $\to$ 强 Spec。
 
@@ -33,13 +35,13 @@ Spec coding 不是传统意义上的「写文档」，而是：把「你脑子�
 
 \textbf{Spec 阶段}：规模化与防退化。明确 spec 让模型可复现、可回滚、可替换。此时 vibe 是负资产。
 
-\subsection{为什么单一模式不可持续}
+\subsubsection{为什么单一模式不可持续}
 
 「只有 Vibe coding」的问题：一个人时很好用，三个人开始互相骂，六个月后没人敢动代码，模型升级后行为漂移。原因只有一个：Vibe 没法被版本控制。
 
 「只有 Spec coding」的问题：需求还没想清楚就强行写 spec，导致 spec 本身反复重写，模型生成「合规但没用」的代码。Spec 是收敛工具，不是探索工具。
 
-\subsection{实用判断标准}
+\subsubsection{实用判断标准}
 
 问自己一句话：「如果明天模型换一家，我现在写的东西还能用吗？」
 \begin{itemize}
@@ -47,172 +49,67 @@ Spec coding 不是传统意义上的「写文档」，而是：把「你脑子�
     \item 能 $\to$ 你已经 spec 化了
 \end{itemize}
 
-\subsection{未来趋势}
+\subsubsection{未来趋势}
 
 到 2026 年，主流工程范式会是：Vibe 用来找方向，Spec 用来保成果。好的工程师将具备一种新能力：把 vibe 转译成 spec 的能力。这会比「会不会写 prompt」重要得多。
 
-\section{Claude Code 的 Plan Mode}
 
-Claude Code 的 Plan Mode，本质上就是：把「vibe $\to$ spec 的中间态」产品化了。它不是否定 vibe coding，而是试图解决 vibe coding 最大的工程缺陷。
+\section{Spec 的三种形态}
 
-\subsection{Plan Mode 的定位}
+\subsection{形态分类}
 
-Plan Mode 在做一件事：在「纯 vibe」和「纯 spec」之间，建立一个「半结构化的中间态」。
-
-它提供的是：
+\textbf{工作态 spec}（不进 git）：
 \begin{itemize}
-    \item 结构化的思考框架
-    \item 可审查的决策过程
-    \item 可复现的步骤
+  \item 本地笔记、对话、临时 markdown
+  \item 用于思考、对齐、驱动实现
+  \item 不要求持久化，squash 后自然消失
 \end{itemize}
 
-但它不提供：
+\textbf{协作态 spec}（进 git，有生命周期）：
 \begin{itemize}
-    \item 完整的工程 spec
-    \item 长期维护的契约
-    \item 团队级的规范
+  \item docs/wip/、specs/、design/ 目录
+  \item PR 中 review，merge 时决定是否留下
 \end{itemize}
 
-\subsection{Plan Mode vs 传统 Spec}
-
-传统 spec（你在工程文档里写的那些）：
+\textbf{契约态 spec}（必须长期存在）：
 \begin{itemize}
-    \item 面向：团队、人类
-    \item 生命周期：长期、版本化
-    \item 权威性：工程事实
+  \item docs/adr/、docs/api/、README
+  \item 必须进 main，长期维护，是团队记忆
 \end{itemize}
 
-Plan Mode 生成的 plan：
-\begin{itemize}
-    \item 面向：当前任务、模型
-    \item 生命周期：一次性
-    \item 权威性：任务级
-\end{itemize}
+\subsection{判断准则}
 
-\subsection{使用场景}
-
-Plan Mode 适合：
-\begin{itemize}
-    \item 需求大致清楚，但需要探索实现路径
-    \item 单人或小团队
-    \item 中小型任务
-\end{itemize}
-
-Plan Mode 不适合：
-\begin{itemize}
-    \item 大型重构
-    \item 多人协作的复杂系统
-    \item 需要长期维护的 API 契约
-\end{itemize}
-
-\section{Spec-driven Development}
-
-Spec-driven development 不是新概念，但在 AI 时代有了新的重要性。
-
-\subsection{Spec 的层次}
-
-spec 有不同「存活形态」：
-
-\textbf{① 工作态 spec}（不进 git）：本地笔记、Chat/LLM 对话、临时 markdown。用于思考、对齐、驱动实现，不要求持久化。
-
-\textbf{② 协作态 spec}（进 git，但有生命周期）：docs/wip/、specs/、design/。merge 时要么一起 squash 进 main，要么在 merge 前删除。
-
-\textbf{③ 契约态 spec}（必须长期存在）：docs/adr/、docs/api/、README。必须进 main、长期维护、是团队「记忆」。
-
-\subsection{Spec 优先级规则}
-
-当多个文档提供指导时，遵循以下顺序：
+"两问法"决定 spec 去向：
 \begin{enumerate}
-    \item ADR（docs/adr/*）——最高权威、不可违反
-    \item README.md——定义项目级事实和使用说明
-    \item WIP specs/design docs（docs/wip/*）——临时和协作态
-    \item CLAUDE.md——AI 行为和工作流规则
-    \item 工具本地 spec（.specify/、droid specs、.cursor）——任务级工作记忆
+  \item 这个 spec 对"feature 完成后"还有用吗？
+  \item 如果我明天请假，别人需要它吗？
 \end{enumerate}
 
-如果检测到冲突，停止并请求澄清。
-
-\subsection{.specify/ 的真实定位}
-
-.specify/ 的本质是：LLM 的工作目录/私有工具状态/临时输入输出。它更像 .idea/、.vscode/、.cursor/：
 \begin{itemize}
-    \item 不稳定
-    \item 工具相关
-    \item 不保证长期语义
-    \item 可随工具版本变化
+  \item 两个都否 $\to$ 不 commit / 删除
+  \item 任一是 $\to$ commit 到 main（或 issue/PR）
 \end{itemize}
 
-它不具备「工程契约」的资格。协作态和契约态 spec 都不应该放在 .specify/ 里，而是应该放在项目可见、可 review 的目录下（./docs、./design、./adr 等）。
+\section{工程工具目录辨析}
 
-.specify/ 是「草稿本」，./docs 是「会议纪要」，./adr 是「合同」。草稿本里的东西可以丢、不能依赖。
+\subsection{常见工具目录}
 
-\section{Git 工作流与 Spec}
+\textbf{.idea/}：JetBrains 系列 IDE 的工程结构、运行配置、个人快捷键。IDE 私有、高度个人化。通常不 commit、不能当 spec/文档。
 
-\subsection{Feature = Git 分支}
+\textbf{.vscode/}：VS Code 的 settings.json、launch.json、extensions 推荐。个人设置不 commit，团队约定（少量）可 commit（例如 formatter）。
 
-「Feature = Git 分支」不是 Git 的常识，而是一个工作流约定。Git 本身根本不知道什么是 feature。
+\textbf{.cursor/}：Cursor AI 编辑器的 AI 行为配置、prompt 模板、会话状态。本质和 .specify/ 一样是 AI 工具的私有工作区。不应该被当作工程事实。
 
-Git 的真正常识/事实只有这些：Git 有 commit、branch、tag。branch 只是一个指向 commit 的指针。Git 不关心 feature、bug、release、task。
+\textbf{.venv/}：Python 虚拟环境、第三方库、解释器副本。本地运行环境、可再生。永远不 commit、用 requirements.txt/pyproject.toml 描述即可。
 
-这个约定之所以成为事实标准，是因为：
+共同点：可再生、不可审计、不应成为「项目真相」。
+
+\subsection{判断公式}
+
+以后看到任何目录/文件，问一句：「如果我换 IDE/换 AI/换机器，这个东西还应该存在吗？」
 \begin{itemize}
-    \item 它是最简单的「隔离单位」：不污染 main、可以随时丢弃、可以并行工作
-    \item 它天然就是回滚边界
-    \item 它和 PR/Review 完美对齐
-    \item 它和 spec-driven 极度契合
-\end{itemize}
-
-\subsection{Spec 与分支的关系}
-
-spec 文件的物理位置永远是项目根目录的 .specify/，但它们的语义归属、生命周期、review 边界，都跟某一个 feature（通常是 feat 分支）绑定。
-
-一个 feature 的「设计真相」就是 .specify/specs/<feature>/ 里的 spec.md、plan.md、tasks.md。这些就是这个 feature 的设计合同，当然要进 Git。
-
-正确流程：
-\begin{enumerate}
-    \item git checkout -b feat/xxx
-    \item spec / plan / tasks（commit）
-    \item implement
-    \item review（git diff / PR）
-    \item commit implementation
-    \item open PR
-    \item merge
-\end{enumerate}
-
-\subsection{Squash Merge}
-
-Squash = 把多个 commit「压扁」为一个 commit。它不是「删除历史」，而是「选择性公开历史」。原来的 commit 仍在 feat 分支、在 reflog 里，只是不进入 main。
-
-squash merge 的目的：main 只保留「做了什么」，而不是「我中间怎么折腾的」。这是对「主线历史可读性」的优化手段。
-
-在 spec-driven 里，squash 非常常见。因为 spec/plan 已经记录了过程，main 更适合只保留 spec 定义和最终实现。
-
-\subsection{Rebase}
-
-Git rebase = 把「我这一串 commit」从「旧的 base」重新接到「新的 base」上。体感像「同步代码」，但本质是「重写你这段提交的历史位置」。
-
-正确表述：「我在 feature 分支上，通过 rebase 把自己的提交，重新基于最新的 main 应用一遍，让历史看起来像是从最新 main 开始开发的。」
-
-什么时候 rebase = 好主意：只在你自己的 feature 分支上、在提交还没被别人依赖时。不要在 main/已共享分支上 rebase。
-
-\subsection{Implement 与 Commit}
-
-/speckit.implement 执行完成后，不会在 feat 分支自动 commit。执行结束时，代码只处在 working tree/staging 之前的状态。
-
-commit 是「责任边界」，不能由 AI 自动跨越。正确顺序永远是：implement $\to$ review $\to$ commit。
-
-如果 implement 自动 commit：review 就变成事后补救、历史会被污染。
-
-\subsection{Merge 后的新分支}
-
-一个 feat 分支一旦被 merge（或 squash merge）到 main，它的「使命」就结束了。继续 spec-coding 新内容时，应该从 main 再开一个新的 feat 分支。
-
-这是工程常识级别的做法。merge 之后继续在同一个分支上写新 spec，等于把两个 feature 的生命周期混在一起，让 PR、review、回滚都变得模糊。
-
-例外情况：
-\begin{itemize}
-    \item merge 之后立刻发现小 bug/typo：可以直接在 main 上 hotfix（小项目/solo）
-    \item spec 尚未 merge，其实只是「第一次 implement」：还在同一个 feature 内
+    \item 是 $\to$ 应该进 repo（docs/code/adr）
+    \item 否 $\to$ 工具状态（ignore）
 \end{itemize}
 
 \section{ADR（Architecture Decision Record）}
@@ -245,178 +142,6 @@ ADR 是「不可见的工程记忆」。在 AI 时代更重要，因为：AI 看
 \subsection{ADR 的优先级}
 
 ADR 的优先级是：对「是什么」的解释权 > 对「为什么」的解释权。README 可以说「我们使用 PostgreSQL」，但不能说「因为 XYZ，所以否掉了 DynamoDB」。这种理由属于 ADR。
-
-\section{AI Agent 概念辨析}
-
-\subsection{LSP}
-
-LSP 本质是：自动补全、跳转、类型提示、语法检查。它解决的是编辑器智能，不是：设计、架构、spec。
-
-不用 LSP 也完全 OK，因为把 LSP 能做的事，交给了脑子 + spec。并没有缺能力，只是工具选择不同。
-
-\subsection{Skills 焦虑}
-
-spec 是「工程契约」，skills 是「个人经验」；被营销放大的 skills，往往是在掩盖 spec 的缺席。
-
-真正的强的 Claude/LLM 使用者，往往 skills 很少、spec 很清楚。因为他们明白：模型最擅长明确任务、明确约束；最不擅长模糊经验、玄学规则。
-
-什么时候 skills 才值得写：
-\begin{itemize}
-    \item 自己反复踩同一个坑 $\ge$ 3 次 $\to$ 写一条 personal rule
-    \item 这是跨项目、长期有效的模式 $\to$ 写成经验总结/playbook
-\end{itemize}
-
-宁愿多写 spec，也不要堆 skills。
-
-\section{工程工具目录辨析}
-
-\subsection{常见工具目录}
-
-\textbf{.idea/}：JetBrains 系列 IDE 的工程结构、运行配置、个人快捷键。IDE 私有、高度个人化。通常不 commit、不能当 spec/文档。
-
-\textbf{.vscode/}：VS Code 的 settings.json、launch.json、extensions 推荐。个人设置不 commit，团队约定（少量）可 commit（例如 formatter）。
-
-\textbf{.cursor/}：Cursor AI 编辑器的 AI 行为配置、prompt 模板、会话状态。本质和 .specify/ 一样是 AI 工具的私有工作区。不应该被当作工程事实。
-
-\textbf{.venv/}：Python 虚拟环境、第三方库、解释器副本。本地运行环境、可再生。永远不 commit、用 requirements.txt/pyproject.toml 描述即可。
-
-共同点：可再生、不可审计、不应成为「项目真相」。
-
-\subsection{判断公式}
-
-以后看到任何目录/文件，问一句：「如果我换 IDE/换 AI/换机器，这个东西还应该存在吗？」
-\begin{itemize}
-    \item 是 $\to$ 应该进 repo（docs/code/adr）
-    \item 否 $\to$ 工具状态（ignore）
-\end{itemize}
-
-\section{恢复与连续性}
-
-\subsection{/resume 的本质}
-
-/resume 的意思是：让 Claude 尝试「继续上一次中断的会话状态」，而不是重新理解项目或重新加载工程事实。它是会话级恢复，不是工程级恢复。
-
-/resume 只可能恢复：上一次对话中的任务目标、讨论上下文、未完成的步骤；Claude 在当前会话窗口里的推理轨迹、临时计划、工作节奏。
-
-/resume 不能：恢复本地的 .specify/、恢复 $\sim$/.factory/specs/、重新读懂你没 commit 的 WIP spec、替代 ADR/README/CLAUDE.md、跨账号/跨机器保证一致。
-
-\subsection{Droid /session}
-
-droid 的 /session 本质和 Claude 的 /resume 一样：都是会话级连续性，不是工程级状态恢复。
-
-\subsection{Spec 恢复依赖 Git}
-
-spec 的「恢复」本质上依赖的是 Git（以及 repo 内文档），而不是 /resume。只有两种来源：
-\begin{itemize}
-    \item Git repo（代码 + docs）
-    \item 被 commit 的 ADR/WIP spec/README
-\end{itemize}
-
-除此之外，都是：临时缓存、会话残影、工具状态。
-
-工程上更稳的替代方案：WIP spec（docs/wip）、ADR（docs/adr）、清晰的 commit。这些东西：不靠会话、不靠模型、不靠工具。
-
-\section{文档优先级与 CLAUDE.md}
-
-\subsection{三文件的角色}
-
-\textbf{ADR}：项目的「宪法条款」。记录：为什么做了某个不可逆决定。面向：未来的工程师（包括你自己）。特点：稳定、可追溯、不频繁修改。ADR 是「事实之上的理由」，不是操作说明。
-
-\textbf{README}：项目的「说明书」。记录：项目是什么、如何运行/使用。面向：新人、用户、外部贡献者。特点：相对稳定、高层概述。README 不解释复杂历史决策。
-
-\textbf{CLAUDE.md}：AI 的「工作指令书」。记录：spec 优先级、禁止事项、代码风格、agent 行为边界。面向：AI（Claude/droid/未来工具）。特点：工具相关、可变、行为导向。CLAUDE.md 是「怎么干活」，不是「为什么这么设计」。
-
-\subsection{优先级在 CLAUDE.md 中定义}
-
-五个文档的优先级顺序，最合适、最有效、最不混乱的定义位置就是 CLAUDE.md。因为：它面向 AI、它约束行为、它不承载工程事实本身。
-
-推荐写法：
-\begin{verbatim}
-## Document precedence rules
-
-When multiple documents provide guidance, follow this order:
-
-1. Architecture Decision Records (docs/adr/*)
-   - Highest authority
-   - Must not be violated
-
-2. README.md
-   - Defines project-level facts and usage
-
-3. WIP specs / design docs (docs/wip/*)
-   - Temporary and collaborative
-   - Must not contradict ADRs or README
-
-4. CLAUDE.md
-   - AI behavior and workflow rules
-   - Cannot override any of the above
-
-5. Tool-local specs (.specify/, droid specs, .cursor)
-   - Task-local working memory
-   - Must never override committed documents
-
-If any conflict is detected, stop and ask for clarification.
-\end{verbatim}
-
-CLAUDE.md 里写「优先级」，并不是说 CLAUDE.md 比 README 或 ADR 更高。恰恰相反：CLAUDE.md 是在自我约束，它是在说：「我（AI）承认我在这个体系里的位置。」
-
-\section{何时需要 ADR 和 WIP Spec}
-
-在 droid coding 的过程中：你不需要「为了用 AI」而刻意维持 ADR 或 WIP spec。你只需要在「工程本身需要它们」的时候才写。
-
-\subsection{完全不需要的情况}
-
-满足以下条件之一：
-\begin{itemize}
-    \item 单人项目/小项目：你是唯一维护者、变更半天内完成、上下文都在你脑中
-    \item feature 局部、无长期影响：不影响架构、不引入新概念、不改变数据模型
-    \item droid coding 的「短反馈循环」：快速试、快速改、squash 掉
-\end{itemize}
-
-\subsection{需要 WIP Spec 的情况}
-
-满足以下任意一条：
-\begin{itemize}
-    \item feature 超过 1–2 天
-    \item 你需要「明天继续」
-    \item 你发现自己反复跟 AI 解释同一件事
-    \item 可能有人中途接手
-\end{itemize}
-
-写一个极简 WIP spec，不超过一页。
-
-\subsection{必须写 ADR 的情况}
-
-只有在这些情况下：
-\begin{itemize}
-    \item 做了不可逆或高成本决策
-    \item 明确否掉了「看似合理」的方案
-    \item 这个决定未来会被反复质疑
-\end{itemize}
-
-这是给未来人（包括你）用的，不是给 AI。
-
-\subsection{交接风险判断}
-
-只要满足以下任意一条：可能有第二个人接手、你自己可能换账号/换机器/中断一段时间。那么：工程级信息就不能只存在于 droid 的私有目录里，必须至少有 WIP spec；涉及不可逆决策时，必须有 ADR。
-
-30 秒判断法：在写代码前或 merge 前，问自己：「如果我明天请假两周，别人能接手吗？」
-\begin{itemize}
-    \item 能 $\to$ OK，不用写
-    \item 不能 $\to$ 至少写 WIP spec
-\end{itemize}
-
-\section{模型侧开发的特殊性}
-
-在 transformers 这种「接口经常变、体量巨大、语义靠源码而不是注释」的库，用 AI agent/vibe coding 的「性价比和安全性」反而低于古法手写 + 文档 + grep。
-
-这不是「不用工具」，而是用对工具：IDE + LSP、grep/ripgrep、看源码、看 commit history、跑最小复现脚本、手写改动。这是「底层工程的 vibe」。
-
-这类代码的特点：接口是软约定、行为靠实现细节、一点点错 = silent bug/数值错/性能灾难。这是 AI agent 最不擅长的区域之一。
-
-AI agent 不会像人一样：rg class\_name、跳进源码、看 call graph、追 commit diff。即使能，它做得慢、不可靠、容易 hallucinate。
-
-AI 更适合外围 glue、实验代码、pipeline 生成，不适合 transformers 核心路径。
 
 \vspace{1em}
 \normalsize

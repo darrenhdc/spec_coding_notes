@@ -1,28 +1,9 @@
-\chapter{Spec Coding 与工程实践}
+% chapter_04.tex - Spec Coding 工程实践与工具对比
 \small
 
-\section{Spec Coding 的核心理念}
+\chapter{Spec Coding 工程实践与工具对比}
 
-\subsection{Vibe Coding 与 Spec Coding 的关系}
-
-Vibe Coding 是「生成方式」，Spec Coding 是「约束方式」。两者不是对立关系，而是同一条工程成熟度曲线上的不同阶段。
-
-\begin{description}
-  \item[Vibe Coding] 在不完全明确需求的情况下，通过人与模型的「感觉对齐」，快速逼近可用实现。典型场景包括原型验证、Hackathon、个人项目、探索性功能、UI/UX 草图。
-  \item[Spec Coding] 把「你脑子里的隐性约束」显式化，强迫模型在一个受控空间里生成代码。核心特征包括明确输入/输出、明确不变量（invariants）、明确边界条件、明确失败方式。典型场景包括核心业务逻辑、金融/医疗/安全相关代码、多人协作、长期维护项目、自动化测试/CI。
-\end{description}
-
-\subsubsection{成熟团队的流程}
-
-成熟团队的真实流程是：Vibe $\rightarrow$ 半 Spec $\rightarrow$ 强 Spec。
-
-\begin{enumerate}
-  \item \textbf{Vibe 阶段}：探索问题空间。「我们到底要做什么？」「这个交互感觉对不对？」「技术路线能不能跑通？」——快、乱、但便宜。
-  \item \textbf{半 Spec 阶段}：固化直觉。把成功的 vibe 对话提炼成接口、状态机、约束条件，开始补测试。把「感觉」变成「规则」。
-  \item \textbf{Spec 阶段}：规模化与防退化。明确 spec 让模型可复现、可回滚、可替换。此时 vibe 是负资产。
-\end{enumerate}
-
-\subsection{Skills 文档与 Spec 的关系}
+\section{Skills 文档与 Spec 的关系}
 
 传统的「skills」本质上只是「为了让自己或别人搞清楚这次要怎么做，而写的临时解释」。在使用 droid 做 spec-coding 的前提下，绝大多数为单个 feature 服务的 skills 文档都可以不写。
 
@@ -32,36 +13,6 @@ Vibe Coding 是「生成方式」，Spec Coding 是「约束方式」。两者�
 \end{description}
 
 判断标准：「如果半年后我或别人看到 main，只看代码和测试，还需要知道这份 spec 吗？」需要则 commit，不需要则不 commit。
-
-\section{文档体系与优先级}
-
-\subsection{文档分层}
-
-\begin{enumerate}
-  \item \textbf{ADR (Architecture Decision Record)} —— 最高权威（为什么）。记录「为什么我们在架构上做了这个决定」。
-  \item \textbf{README.md} —— 项目事实（是什么）。项目是什么，怎么用。
-  \item \textbf{PRD (Product Requirements Document)} —— 产品目标与范围。用户价值、功能范围、非功能性约束。
-  \item \textbf{Plan / Design doc} —— 实现方案与阶段计划。技术方案、模块划分、里程碑。
-  \item \textbf{WIP spec} —— 协作中的未定设计。
-  \item \textbf{CLAUDE.md} —— AI 行为约束（怎么协作）。spec 优先级、禁止事项、代码风格、agent 行为边界。
-  \item \textbf{Tool-local specs} (.specify/, droid specs) —— 一次性任务草稿。
-\end{enumerate}
-
-\subsection{Spec 的三种形态}
-
-\begin{description}
-  \item[工作态 spec] 不进 git。用于思考、对齐、驱动实现。形态：本地笔记、Chat/LLM 对话、临时 markdown（不 add）、issue comment/PR description。
-  \item[协作态 spec] 进 git。形态：docs/wip/feature-x.md、specs/feature-x.md、design/feature-x.md。merge 时要么一起 squash 进 main，要么在 merge 前删除。
-  \item[契约态 spec] 必须长期存在。形态：docs/adr/0007-auth-flow.md、docs/api/*.md、README 更新。是团队「记忆」。
-\end{description}
-
-\subsection{Claude Code 中的文档角色}
-
-\begin{description}
-  \item[PRD.md] 产品事实层（Intent / Truth）。需求的真理来源，不是给 Claude 发挥的，而是用来约束 Claude 的。包含 Goals、Non-Goals、User Stories。不该有技术选型、文件结构、类名/函数名。
-  \item[plan.md] 技术决策层（Design / Architecture）。在不违反 PRD 的前提下，我们决定如何实现。包含技术栈、模块拆分、数据流/控制流、关键 trade-off。不该有具体代码实现、逐行逻辑、prompt 指令。
-  \item[CLAUDE.md] Agent 行为控制层（Meta / Governance）。Claude 在这个 repo 里「该如何当一个工程师」。包含 General Rules、Coding Style、Workflow。不适合放产品需求（PRD）、技术架构（plan）、临时聊天指令（prompt）。
-\end{description}
 
 \section{上下文管理与记忆}
 
@@ -89,41 +40,8 @@ Memory 管理能做的事：定义结构、持久化、明确优先级、强制 
 └── DECISIONS.md       ← 防止反复争论
 \end{verbatim}
 
-每次新对话 / /compact 后，都明确告诉 Claude：「当对话历史、直觉判断与 docs/ 中的内容冲突时，以 SPEC.md $\rightarrow$ ARCH.md $\rightarrow$ CURRENT\_STATE.md 的顺序为准。」
+每次新对话 / /compact 后，都明确告诉 Claude：「当对话历史、直觉判断与 docs/ 中的内容冲突时，以 SPEC.md → ARCH.md → CURRENT\_STATE.md 的顺序为准。」
 
-\subsection{/compact 命令的作用}
-
-/compact 的作用是：把当前对话中「对后续实现不再重要的上下文」压缩成一个更短的内部摘要，以释放上下文窗口。
-
-\begin{itemize}
-  \item \textbf{会}：减少 token 占用、保留关键信息
-  \item \textbf{不会}：保存 plan、生成 spec、不可逆
-\end{itemize}
-
-\textbf{安全使用前提}：在执行 /compact 之前，最好已经做到至少一件事：
-\begin{enumerate}
-  \item 把关键设计/约束写进项目文件（如 SPEC.md、ARCH.md、README.md）
-  \item 明确确认：「前面的细节即使丢掉，也不会影响后续工作」
-\end{enumerate}
-
-\textbf{标准流程}：文档固化 $\rightarrow$ /compact $\rightarrow$ 理解验证。
-
-\subsection{/compact 后的理解偏移检测}
-
-\textbf{快速三连问}：
-\begin{enumerate}
-  \item \textbf{状态复述}：请用不超过 5 条要点，复述当前项目的目标、已完成内容和接下来要做的事。
-  \item \textbf{硬约束复述}：列出当前实现中必须保持不变的 3–5 个关键约束或不变量。
-  \item \textbf{反例推理}：如果违反其中一个约束，会出现什么具体问题？请给一个例子。
-\end{enumerate}
-
-\textbf{红旗信号}（一看就该警惕）：
-\begin{itemize}
-  \item 使用模糊词：「一般来说」「通常情况下」
-  \item 把「实现细节」说成「可选项」
-  \item 新增你没说过的目标
-  \item 忘记之前你反复强调的限制
-\end{itemize}
 
 \section{AI 工具对比}
 
@@ -132,7 +50,7 @@ Memory 管理能做的事：定义结构、持久化、明确优先级、强制 
 \subsubsection{Claude Code}
 \begin{itemize}
   \item \textbf{定位}：增强型开发者工具（copilot++）
-  \item \textbf{Plan Mode}：把「vibe $\rightarrow$ spec 的中间态」产品化了。在动手写代码之前，强制模型显式化「它理解的 spec」。
+  \item \textbf{Plan Mode}：把「vibe → spec 的中间态」产品化了。在动手写代码之前，强制模型显式化「它理解的 spec」。
   \item \textbf{/context}：不可查看。没有 /context、/show-context、/dump-context 之类的命令。
   \item \textbf{LSP 支持}：隐式支持（内部确实使用了 LSP/AST/repo analysis），但对用户完全不可见、不可配置。
   \item \textbf{适用}：单人/小团队、已在使用 Claude Code、想要 spec-driven 但不想换平台。
@@ -161,25 +79,6 @@ Memory 管理能做的事：定义结构、持久化、明确优先级、强制 
   \item \textbf{三层结构}：Requirements（需求层）、Technical Design（设计层）、Tasks/Hooks（执行层）
   \item \textbf{定位}：spec 是「人维护的工程文档」，而非「agent 维护的系统真理」
   \item \textbf{意义}：第一个把「spec coding」带进主流 IDE 的产品
-\end{itemize}
-
-\subsection{LSP (Language Server Protocol)}
-
-LSP 是一套标准协议，用来把「语言理解能力」从编辑器中解耦出来。
-
-\begin{itemize}
-  \item \textbf{无 LSP}：AI 看到的是「一堆文件内容 + 模糊上下文」，结果通常是猜 API、猜类型、容易 hallucinate、改错文件/行号。
-  \item \textbf{有 LSP}：AI 可以查询真实符号表、知道函数定义在哪、知道类型/引用/依赖、精确跳转/重构。
-\end{itemize}
-
-\textbf{使用 LSP 的关键}：不在于「操作它」，而在于「提出只有 LSP 才能完成的任务」。
-
-\begin{itemize}
-  \item 永远用符号名，不用「这个函数」
-  \item 要求更新所有引用
-  \item 要求类型不变/API 不变
-  \item 先分析，再实现
-  \item 允许 agent 说「不确定，需要确认」
 \end{itemize}
 
 \subsection{Function Calling 与 MCP Tools}
@@ -325,3 +224,6 @@ End of rules.
 LSP-first workflows significantly reduce hallucination, while explicit specs are necessary to prevent drift.
 
 Hallucination 是「凭空编造」，Drift 是「逐步跑偏」；前者靠 LSP 和事实源解决，后者靠 spec 和结构化流程解决。
+
+\vspace{1em}
+\normalsize

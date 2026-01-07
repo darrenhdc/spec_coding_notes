@@ -1,18 +1,8 @@
-\chapter{Spec Coding 与 Vibe Coding 的范式转移}
+% chapter_10.tex - Spec Coding 范式转移与最佳实践
+\small
 
-{\small
+\chapter{Spec Coding 范式转移与最佳实践}
 
-\section{Spec Coding 与 Vibe Coding 的本质区别}
-
-Vibe Coding 依赖直觉、经验和模糊判断进行快速迭代。Spec Coding 则通过明确的规范文档来驱动开发，将决策前移。
-
-\textbf{核心差异}：
-\begin{itemize}
-  \item Vibe Coding：对话即执行，决策和实现混在一起，容易上下文漂移
-  \item Spec Coding：对话阶段与执行阶段分离，spec → plan → implement 的清晰流程
-\end{itemize}
-
-Spec Coding 的交互范式是：用户主要与 Claude"共写规范与决策"，而不是"共写代码"；真正写代码的时刻被延迟、被约束、被批量执行。
 
 \section{Droid 与 Spec-Driven Development}
 
@@ -43,156 +33,6 @@ Claude Skills 不是"Claude 的内在能力"，而是外部注册给 Claude 的"
 \end{itemize}
 
 \textbf{判断原则}：这段文字是为了"这次能做对"（spec），还是为了"下次能更快 vibe 对"（skills）？前者用 spec，后者才考虑 skills。
-
-\section{Git 工作流与 Spec 管理}
-
-\subsection{Feature = Git 分支}
-
-"Feature = Git 分支"不是 Git 的常识，而是被广泛采用的工程约定。Git 只认识 commit 和 branch，工程才认识 feature。
-
-spec-kit 假设你使用"一个 feature = 一个 Git 分支"的模型，因为这提供了：
-\begin{itemize}
-  \item 最简单的隔离单位
-  \item 天然的回滚边界
-  \item 与 PR / Review 的完美对齐
-\end{itemize}
-
-\subsection{Spec 文件的物理位置与语义归属}
-
-spec 文件：
-\begin{itemize}
-  \item \textbf{物理位置}：永远在项目根目录的 .specify/ 下
-  \item \textbf{语义归属}：属于某一个 feature（通常是 feat 分支）
-  \item \textbf{生命周期}：通过 Git 分支管理
-\end{itemize}
-
-spec / plan / tasks 都应该被提交到 Git，因为它们是 feature 的"设计合同"。
-
-\subsection{PR（Pull Request）的本质}
-
-PR 不是 Git 命令，而是协作平台提供的"变更提议机制"。PR 的真正价值不在 merge，而在 review：
-
-\begin{itemize}
-  \item 一个"意图边界"（这次改动想干嘛）
-  \item 一个"讨论空间"（问为什么、提建议）
-  \item 一个"安全闸门"（看 diff、跑 CI、决定 merge）
-\end{itemize}
-
-在 spec-driven 工作流里，PR 是"spec 是否被正确实现"的最终检查点。
-
-\subsection{Merge 策略}
-
-\textbf{三种 merge 策略}：
-
-\begin{enumerate}
-  \item \textbf{普通 merge}：保留完整分支历史（"毛毛虫"形状）
-  \item \textbf{Squash merge}：把多个 commit 压扁为一个（推荐，最常见）
-  \item \textbf{Rebase + merge}：改写历史后线性合并
-\end{enumerate}
-
-在现代 PR-based、spec-driven 工作流里，squash merge 是最常见的选择。因为：
-\begin{itemize}
-  \item main 历史清晰可读
-  \item spec / plan 已经记录了过程
-  \item main 更像"产品演进日志"而非"开发录像"
-\end{itemize}
-
-\subsection{Rebase 的本质}
-
-Rebase 的体感像"同步代码"，但本质是"重写你这段提交的历史位置"。正确理解：
-
-\begin{quote}
-我在 feature 分支上，通过 rebase 把自己的提交，重新基于最新的 main 应用一遍，让历史看起来像是从最新 main 开始开发的。
-\end{quote}
-
-rebase 只在你自己的 feature 分支上是安全的；不要在 main / 已共享分支上 rebase。
-
-\subsection{Spec 与 Commit 的关系}
-
-\texttt{/speckit.implement} 执行完成后：
-\begin{itemize}
-  \item 不会自动 commit
-  \item 不会自动 merge
-  \item 代码只存在于 feat 分支的工作区
-\end{itemize}
-
-commit 是"责任边界"，必须由人类决定。推荐节奏：
-\begin{enumerate}
-  \item spec / plan / tasks → commit
-  \item implement → review → commit
-  \item open PR → merge
-\end{enumerate}
-
-\subsection{Spec 的生命周期}
-
-Spec 有三种形态：
-
-\begin{enumerate}
-  \item \textbf{工作态 spec}（不进 git）：本地笔记、对话、临时 markdown
-  \item \textbf{协作态 spec}（进 git，有生命周期）：docs/wip/、specs/
-  \item \textbf{契约态 spec}（必须长期存在）：docs/adr/、API 文档、README
-\end{enumerate}
-
-判断标准："如果半年后我只看代码和测试，还需要知道这份 spec 吗？"
-
-\section{项目文档层级体系}
-
-完整的文档优先级：
-
-\begin{enumerate}
-  \item \textbf{ADR（docs/adr/*）}：不可违反的架构决策
-  \item \textbf{README.md}：项目事实（是什么、怎么用）
-  \item \textbf{WIP spec / design docs}：临时协作文档
-  \item \textbf{CLAUDE.md}：AI 行为约束
-  \item \textbf{Tool-local specs}（.specify/、droid specs）：任务级工作记忆
-\end{enumerate}
-
-\subsection{ADR（Architecture Decision Record）}
-
-ADR 记录"为什么我们在架构上做了这个决定"：
-\begin{itemize}
-  \item Context：发生了什么问题？
-  \item Decision：我们选了什么方案？
-  \item Alternatives：还考虑过哪些方案？为什么没选？
-  \item Consequences：这个决定的好处和代价是什么？
-\end{itemize}
-
-ADR 是给未来的你、同事、以及 AI 看的，防止重复走歪路。
-
-\subsection{Claude.md 的职责}
-
-CLAUDE.md 是 AI 的"工作指令书"，记录：
-\begin{itemize}
-  \item spec 优先级
-  \item 禁止事项
-  \item 代码风格
-  \item agent 行为边界
-\end{itemize}
-
-文档优先级规则应该定义在 CLAUDE.md 里，因为：
-\begin{itemize}
-  \item 它面向 AI
-  \item 它约束行为
-  \item 它不承载工程事实本身
-\end{itemize}
-
-CLAUDE.md 可以引用 ADR，但不应该替代 ADR。
-
-\subsection{工具目录的定位}
-
-以下目录都是"开发工具或运行环境的私有状态"：
-\begin{itemize}
-  \item .idea/：JetBrains IDE 状态
-  \item .vscode/：VS Code 配置
-  \item .cursor/：Cursor AI 工具状态
-  \item .venv/：Python 虚拟环境
-  \item .specify/：spec-kit 工作记忆
-  \item \texttt{\textasciitilde{}/.factory/specs/}：Droid 工作记忆
-\end{itemize}
-
-它们的共同点：可再生、不可审计、不应成为"项目真相"。
-
-判断原则："如果我换 IDE / 换 AI / 换机器，这个东西还应该存在吗？"
 
 \section{Spec-Driven 工作流最佳实践}
 
@@ -256,4 +96,5 @@ CLAUDE.md 可以引用 ADR，但不应该替代 ADR。
   临时 spec 是工作记忆，main 只保留长期记忆；squash merge 的意义，不仅是压缩 commit，也是压缩思考噪音。
 \end{quote}
 
-} % end small
+\vspace{1em}
+\normalsize

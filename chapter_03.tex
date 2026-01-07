@@ -1,17 +1,130 @@
-\chapter{Spec Coding 实战与工程深化}
-
+% chapter_03.tex - Spec Coding 实战深化
 \small
+
+\chapter{Spec Coding 实战深化}
 
 \section{LSP-first 开发范式}
 
-\subsection{LSP 的核心价值}
+\subsection{LSP 是什么}
 
-LSP（Language Server Protocol）在 AI 辅助开发中的价值不仅是"代码补全"，而是建立了一个稳定的工具层。LSP-first 开发意味着：
+LSP（Language Server Protocol）是一套标准协议，用来把"语言理解能力"从编辑器中解耦出来。编辑器（VS Code/Vim/IntelliJ/Terminal）通过 LSP 协议与语言服务器通信，后者了解语法、类型、项目结构。
+
+\subsection{有无 LSP 的本质区别}
+
+\paragraph{没有 LSP（纯文本 AI）}
+
+AI 看到的是一堆文件内容 + 模糊上下文。结果通常是：猜 API、猜类型、容易 hallucinate、改错文件/行号。
+
+\paragraph{有 LSP（工程级 AI）}
+
+AI 可以查询真实符号表、知道函数定义在哪、知道类型/引用/依赖、精确跳转/重构。这是"像工程师一样改代码"的前提。
+
+\subsection{LSP 是 Coding Agent 的分水岭}
+
+没有 LSP 的 AI = 聊天机器人，有 LSP 的 AI = 工程协作者。尤其对 spec-coding、refactor、大项目、多文件一致性、长期维护至关重要。
+
+\subsection{各工具对 LSP 的支持}
+
+\paragraph{OpenCode —— 显式、原生、卖点级支持}
+
+LSP enabled，Automatically loads the right LSPs for the LLM。OpenCode 会自动启动对应语言的 LSP，把 LSP 查询结果作为 agent 的输入。LSP 是一等公民，不是"顺带支持"。这是 OpenCode 非常重要的定位优势。
+
+\paragraph{Claude Code —— 隐式支持（但不可控）}
+
+内部确实使用了 LSP/AST/repo analysis，但对用户完全不可见、不可配置，无法选择 LSP、强制读取、验证是否使用。结论：Claude Code "有 LSP 能力，但你无法把它当成系统依赖"。
+
+\paragraph{Droid —— 必然支持（但抽象在 agent 层）}
+
+从设计上必须有 LSP/AST/graph，否则无法维护 spec 一致性。但通常不会跟你说"这是 LSP"，而是说"结构化代码理解"、"semantic model"。LSP 在 Droid 里是底层基础设施，不是功能点。
+
+\subsection{LSP 与 spec-coding 的关系}
+
+LSP $\neq$ Memory，但 LSP 是"spec 能落地"的前提条件。Memory/spec 决定"应该做什么"，LSP 决定"怎么安全地做"。没有 LSP，spec-coding 只能停留在纸面。
+
+\subsection{为什么 OpenCode 把显式 LSP 当卖点}
+
+OpenCode 把「显式 LSP」当卖点，不是因为它比 Claude Code/Droid 更"先进"，而是因为它解决的是「开源、可控、可验证」这个层级的问题。
+
+\textbf{一句话对比：}
+\begin{itemize}
+  \item Claude Code / Droid："我有，但你别管"
+  \item OpenCode："我有，而且你可以看、可以控、可以换"
+\end{itemize}
+
+\subsubsection{为什么 Claude Code/Droid "不需要说 LSP"}
+
+对闭源/强系统来说，LSP 是"理所当然的内脏器官"。在这些工具中，LSP $\approx$ AST/symbol graph/semantic index，是 agent 的基础设施，用户无权、也无必要干预。所以它们的叙事是"我理解你的代码"，而不是"我用 LSP 理解你的代码"。LSP 在这里不是产品卖点，而是工程前提。
+
+显式暴露 LSP 反而会"降低抽象层级"。如果你还在选 LSP、看诊断，那说明 agent 没把事情做好。所以它们刻意不提 LSP。
+
+\subsubsection{OpenCode 为什么要"高调说 LSP"}
+
+\textbf{1. OpenCode 是「开源 Agent 框架」，不是「封装好的 Agent」}
+
+用户是开发者、架构师、OSS 社区、企业 IT/安全团队。这些人关心：AI 到底"看到了什么"？是否真的理解代码？能不能在我环境里复现？显式 LSP = 可验证的工程承诺。
+
+\textbf{2. 必须对抗一个默认怀疑}
+
+在开源世界："你说你理解代码？你是不是只是 grep + prompt？"OpenCode 用 "LSP enabled" 明确告诉你：我不是纯文本 agent、我走的是标准语言协议、我能跑在你的本地环境。这是信任构建，而不是炫技。
+
+\textbf{3. 需要和「聊天式 AI」明确切割}
+
+最大的竞争对手不是 Claude Code/Droid，而是"CLI 聊天机器人"、"包了一层 UI 的 ChatGPT"。所以它必须强调"我是工程 agent，不是 chat bot"，而 LSP 是最好、最直观的工程信号。
+
+\textbf{4. OpenCode 的"可替换性焦虑"}
+
+OpenCode 的定位是 Model-agnostic Agent Runtime，意味着模型随时可能换，能力不能依赖模型"聪明"。那什么是不随模型变化的确定性能力？LSP。LSP 是本地的、确定的、可测试的，和模型能力解耦。所以 OpenCode 必须把 LSP 抬到台前，作为"系统确定性"的锚点。
+
+\subsection{LSP-first 工作流程}
+
+在大多数 AI coding agent 里，你"不会直接使用 LSP"，而是通过"正确的工作方式"让 agent 去用 LSP。
+
+\subsubsection{核心原则}
+
+LSP 不是一个你去点的功能，而是一套你要"逼着 agent 依赖"的事实来源。你要做的不是"操作 LSP"，而是：
+\begin{itemize}
+  \item \textbf{让 agent 必须通过 LSP 才能回答}
+  \item \textbf{不允许它靠猜}
+\end{itemize}
+
+\subsubsection{四种 LSP-first 行为}
+
+\textbf{1. 要求基于符号而不是文本行动}
+
+错误示例（不触发 LSP）："把这个函数改一下，让它更清晰"
+
+正确示例（强烈触发 LSP）："重构 UserService.createUser，要求：不改变 public signature、更新所有调用点、如果有类型冲突，指出具体文件和行号"
+
+👉 这类要求没有 LSP 几乎做不到。
+
+\textbf{2. 要求 agent 定位定义 / 引用}
+
+"在当前 repo 中：找到 PaymentProcessor 的定义、列出所有直接调用它的地方、判断是否存在循环依赖"
+
+👉 这是标准 LSP query（go to definition / find references）。
+
+\textbf{3. 要求类型级别的保证}
+
+"确认这个改动：不引入新的 TypeScript 类型错误、不破坏 Rust 的 borrow 规则、不改变 Python public API 的 typing"
+
+👉 没有 LSP，这只能靠"感觉"；有 LSP，这是确定性检查。
+
+\textbf{4. 让 agent 先分析再改代码}
+
+"在修改任何代码前：用语言服务器分析相关模块、总结当前结构和依赖、再给出修改方案"
+
+这一步会把 agent 强制拉到 LSP → plan → edit 的路径。
+
+\subsubsection{使用 LSP 的关键}
+
+不在于「操作它」，而在于「提出只有 LSP 才能完成的任务」。
 
 \begin{itemize}
-  \item \textbf{语义稳定性}：通过 LSP 获取准确的定义、引用、类型信息
-  \item \textbf{工具解耦}：不依赖特定 IDE 的黑盒功能
-  \item \textbf{可审计性}：每个操作都有明确的语义来源
+  \item 永远用符号名，不用「这个函数」
+  \item 要求更新所有引用
+  \item 要求类型不变/API 不变
+  \item 先分析，再实现
+  \item 允许 agent 说「不确定，需要确认」
 \end{itemize}
 
 \subsection{LSP-first Prompt 模板}
@@ -24,204 +137,38 @@ LSP（Language Server Protocol）在 AI 辅助开发中的价值不仅是"代码
 基于 LSP 返回的准确语义，分析代码结构并给出建议。
 \end{verbatim}
 
-\section{Claude Code 文档体系深度解析}
+\subsection{终极总结}
 
-\subsection{PRD / plan / CLAUDE.md 的层级关系}
+LSP 是让 AI 从"猜代码"升级为"理解代码"的基础设施；OpenCode 显式拥抱 LSP，Claude Code 隐式使用，Droid 将其视为理所当然。LSP 在 Claude Code/Droid 中是"默认前提"，在 OpenCode 中是"公开承诺"；前者追求抽象完成度，后者追求可控与可验证。
 
-\textbf{PRD.md}（产品需求文档）：
-\begin{itemize}
-  \item 定义"做什么"和"为什么做"
-  \item 作为参考上下文加载，非 system prompt
-  \item 描述产品目标、用户需求、功能范围
-\end{itemize}
+\section{Spec 的存储与连续性}
 
-\textbf{plan.md}（实施计划）：
-\begin{itemize}
-  \item 定义"怎么做"的技术方案
-  \item 同样作为参考材料
-  \item 包含架构设计、技术选型、实施步骤
-\end{itemize}
-
-\textbf{CLAUDE.md}（项目约束规则）：
-\begin{itemize}
-  \item 优先级最高，接近"会话级 system context"
-  \item 定义不可违反的行为约束
-  \item 包含编码规范、安全要求、项目特定规则
-\end{itemize}
-
-\subsection{文档遗忘问题与应对策略}
-
-Claude Code 的三文件体系存在以下局限：
+\subsection{Spec 的三种载体层}
 
 \begin{enumerate}
-  \item \textbf{跨会话遗忘}：关闭后重新打开，需要重新加载
-  \item \textbf{上下文溢出}：新对话会挤压旧信息
-  \item \textbf{实现 drift}：agent 以当前代码为事实源，而非文档
+  \item \textbf{Repo-level spec}：Git 仓库中的 Markdown/YAML 文件（最稳定）
+  \item \textbf{Project-level spec}：Droid 内部 spec state（系统态）
+  \item \textbf{Session/View state}：当前执行上下文（不可追溯）
 \end{enumerate}
 
-\textbf{应对策略}：
+\subsection{判断 Spec 是否在仓库}
+
+\textbf{三问判定法}：
 \begin{enumerate}
-  \item \textbf{锚点最小化}：只保留 5-10 条必须不变的硬约束
-  \item \textbf{提升到 CLAUDE.md}：绝对不能违反的行为规则
-  \item \textbf{Re-anchor Prompt}：关键修改前强制重新阅读文档
-  \item \textbf{阶段化 plan}：只保留当前阶段的计划
+  \item Spec 能否被另一个账号完整恢复？
+  \item Spec 是否存在可版本化、可 diff 的实体？
+  \item Agent 引用 spec 时是"引用文件"还是"模糊转述"？
 \end{enumerate}
 
-\section{Drift 与 Hallucination 机制}
+\subsection{防止 Spec 失效的条件}
 
-\subsection{Drift 的本质}
-
-Drift 是 LLM 在长期交互中逐渐偏离初始意图的现象：
-
-\begin{itemize}
-  \item \textbf{语义漂移}：对同一概念的理解逐渐变化
-  \item \textbf{约束松弛}：初期遵守的规则逐渐被忽略
-  \item \textbf{上下文污染}：早期决策被后期信息覆盖
-\end{itemize}
-
-\subsection{Drift 产生的机制}
-
+把 spec 放进 repo 只是"存储正确"，必须同时满足：
 \begin{enumerate}
-  \item \textbf{上下文窗口有限}：新信息挤压旧信息
-  \item \textbf{概率性生成}：每次生成都是重新采样，存在随机性
-  \item \textbf{缺乏显式锚点}：没有强制性的真值源
+  \item 明确宣告 spec = 唯一真理源
+  \item 强制"引用义务"：任何实现必须引用 spec 条目
+  \item spec 可被 diff/review
+  \item 冲突时显式处理，不自动调和
 \end{enumerate}
-
-\subsection{防止 Drift 的方法}
-
-\begin{enumerate}
-  \item \textbf{显式锚点}：用 CLAUDE.md 定义不可违反的约束
-  \item \textbf{定期 Re-anchor}：在关键节点重新加载核心文档
-  \item \textbf{版本化 spec}：让决策有明确的"真相时刻"
-  \item \textbf{分离对话与执行}：决策阶段和执行阶段分开
-\end{enumerate}
-
-\section{Droid 系统架构}
-
-\subsection{Droid 与 Claude Code 的根本差异}
-
-\begin{table}[h]
-\centering
-\begin{tabular}{lll}
-\hline
-\textbf{文件} & \textbf{Claude Code} & \textbf{Droid} \\
-\hline
-PRD.md & 参考材料 & 系统真理（Authoritative State） \\
-plan.md & 设计说明 & 可执行结构（Execution Graph） \\
-CLAUDE.md & 说明文件 & Agent 宪法（Policy Layer） \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsection{Droid 的核心假设}
-
-Droid 的设计假设是"agent 默认不可信"：
-
-\begin{itemize}
-  \item spec 拥有系统级否决权
-  \item plan 是执行约束，而非建议
-  \item agent 行为规则是系统的一部分，不可随意覆盖
-\end{itemize}
-
-\subsection{Drift 防护机制}
-
-Droid 通过以下机制防止 drift：
-
-\begin{enumerate}
-  \item \textbf{System-level enforcement}：spec 在系统层面强制执行
-  \item \textbf{Explicit state tracking}：维护显式的 spec state
-  \item \textbf{Reference obligation}：任何实现必须引用 spec 条目
-  \item \textbf{Conflict detection}：显式检测和处理冲突
-\end{enumerate}
-
-\section{Spec-kit 工具链}
-
-\subsection{spec-kit 的本质}
-
-spec-kit 不是"让 Claude 更聪明"，而是把靠自觉维护的 PRD/plan/CLAUDE.md 流程，变成：
-
-\begin{itemize}
-  \item \textbf{可执行}：spec 可被机器解析和验证
-  \item \textbf{可审计}：每个改动都能追溯到 spec
-  \item \textbf{可持续}：建立长期的工程记忆
-\end{itemize}
-
-\subsection{spec-kit 与手写文档的对比}
-
-\textbf{spec-kit + Claude Code}：
-\begin{itemize}
-  \item 强制 artifact 链条（不能跳步）
-  \item 明确"哪一步可以问不确定问题"
-  \item spec/plan/tasks 都是机器可解析的
-\end{itemize}
-
-\textbf{手写文档}：
-\begin{itemize}
-  \item 完全可控
-  \item 高度贴合个人习惯
-  \item 容易出现 drift、不一致
-\end{itemize}
-
-\subsection{spec-kit 实战流程}
-
-\begin{enumerate}
-  \item \texttt{specify init . --ai claude}：初始化项目
-  \item \texttt{/speckit.constitution}：写项目宪法
-  \item \texttt{/speckit.specify}：写功能 spec
-  \item \texttt{/speckit.plan}：生成技术方案
-  \item \texttt{/speckit.tasks}：生成任务拆分
-  \item \texttt{/speckit.implement}：让 Claude 写代码
-\end{enumerate}
-
-\section{Git 工作流与 Spec}
-
-\subsection{Feature = Git 分支约定}
-
-"Feature = Git 分支"是被广泛采用的工程约定：
-
-\begin{itemize}
-  \item 最简单的隔离单位
-  \item 天然的回滚边界
-  \item 与 PR/Review 完美对齐
-  \item 与 spec-driven 极度契合
-\end{itemize}
-
-\subsection{Pull Request 的本质}
-
-PR 不是 Git 概念，而是协作平台的"变更提议机制"：
-
-\begin{itemize}
-  \item 提供意图边界："这次改动想干嘛"
-  \item 提供讨论空间：对话不污染 commit 历史
-  \item 提供安全闸门：review 后才 merge
-\end{itemize}
-
-\subsection{Merge 策略对比}
-
-\begin{table}[h]
-\centering
-\begin{tabular}{lll}
-\hline
-\textbf{策略} & \textbf{feature 内 commit} & \textbf{main 上 commit} \\
-\hline
-普通 merge & 原样保留 & 原样保留 \\
-squash merge & 保留在 feat & 不进入 main \\
-rebase + FF & 改写后保留 & 线性进入 main \\
-\hline
-\end{tabular}
-\end{table}
-
-\textbf{推荐}：在 spec-driven 工作流中，squash merge 是最常见、最稳妥的选择。
-
-\subsection{Squash 的本质}
-
-Squash = 把多个 commit "压扁"为一个 commit。其目的是：
-
-\begin{itemize}
-  \item main 只保留"做了什么"
-  \item 不保留"中间怎么折腾的"
-  \item 历史被整理过，只留下对外可读的结果
-\end{itemize}
 
 \section{spec / plan / tasks 与 Git 分支的对应关系}
 
@@ -264,95 +211,6 @@ constitution & constitution.md & .specify/memory/ & 项目 & 所有分支共享 
 └── merge → main
 \end{verbatim}
 
-\subsection{implement 和 merge 的关系}
-
-\textbf{关键事实}：
-\begin{itemize}
-  \item \texttt{/speckit.implement} 不会自动 commit
-  \item implement 和 merge 不是原子操作
-  \item merge 永远是人类的权力边界
-\end{itemize}
-
-\textbf{推荐节奏}：
-\begin{enumerate}
-  \item spec/plan/tasks 完成后 commit
-  \item implement 执行
-  \item review（git diff / PR）
-  \item 满意后 commit implementation
-  \item merge（squash 推荐）
-\end{enumerate}
-
-\section{Spec 的三种形态}
-
-\subsection{形态分类}
-
-\textbf{工作态 spec}（不进 git）：
-\begin{itemize}
-  \item 本地笔记、对话、临时 markdown
-  \item 用于思考、对齐、驱动实现
-  \item 不要求持久化，squash 后自然消失
-\end{itemize}
-
-\textbf{协作态 spec}（进 git，有生命周期）：
-\begin{itemize}
-  \item docs/wip/、specs/、design/ 目录
-  \item PR 中 review，merge 时决定是否留下
-\end{itemize}
-
-\textbf{契约态 spec}（必须长期存在）：
-\begin{itemize}
-  \item docs/adr/、docs/api/、README
-  \item 必须进 main，长期维护，是团队记忆
-\end{itemize}
-
-\subsection{判断准则}
-
-"两问法"决定 spec 去向：
-\begin{enumerate}
-  \item 这个 spec 对"feature 完成后"还有用吗？
-  \item 如果我明天请假，别人需要它吗？
-\end{enumerate}
-
-\begin{itemize}
-  \item 两个都否 → 不 commit / 删除
-  \item 任一是 → commit 到 main（或 issue/PR）
-\end{itemize}
-
-\section{Rebase 的本质}
-
-\subsection{机制说明}
-
-Git rebase = 把"我这一串 commit"从"旧的 base"重新接到"新的 base"上。
-
-\begin{verbatim}
-原始状态：
-  main:  A ── B ── C
-           \
-  feat:           D ── E
-
-rebase 后：
-  main:  A ── B ── C
-           \
-  feat:               D' ── E'
-\end{verbatim}
-
-\subsection{与 Stash 的关系}
-
-stash 是"可选的前置操作"，不是 rebase 的一部分：
-\begin{itemize}
-  \item 工作区干净 → 直接 rebase
-  \item 有未提交修改 → Git 会拒绝
-  \item 所以：git stash → git rebase → git stash pop
-\end{itemize}
-
-\subsection{适用时机}
-
-\begin{itemize}
-  \item[\textbf{✅}] 只在自己的 feature 分支上
-  \item[\textbf{✅}] 提交还没被别人依赖时
-  \item[\textbf{❌}] 不要在 main/已共享分支上 rebase
-\end{itemize}
-
 \section{.specify/ 目录定位}
 
 \subsection{本质澄清}
@@ -367,6 +225,17 @@ stash 是"可选的前置操作"，不是 rebase 的一部分：
   \item ✅ 可随工具版本变化
 \end{itemize}
 
+\subsection{不应放的内容}
+
+形态 2（协作态 spec）和形态 3（契约态 spec），都不应该放在 .specify/ 里，而应该放在项目可见、可 review 的目录（./docs、./design、./adr 等）。
+
+\textbf{原因}：
+\begin{enumerate}
+  \item .specify/ 是 specify 工具的实现细节，工程 spec 必须工具无关
+  \item 新工程师会看 README/docs/adr/，不会默认翻 .specify/
+  \item review/diff/blame 语义错误
+\end{enumerate}
+
 \subsection{正确位置}
 
 \begin{itemize}
@@ -376,36 +245,32 @@ stash 是"可选的前置操作"，不是 rebase 的一部分：
   \item 契约态 spec → docs/adr/、docs/api/、必须进 main
 \end{itemize}
 
-\section{Claude Skills 的本质}
+\section{恢复与连续性}
 
-\subsection{Skills 的本质}
+\subsection{/resume 的本质}
 
-所谓的"Claude skills"本质是：
+/resume 的意思是：让 Claude 尝试「继续上一次中断的会话状态」，而不是重新理解项目或重新加载工程事实。它是会话级恢复，不是工程级恢复。
+
+/resume 只可能恢复：上一次对话中的任务目标、讨论上下文、未完成的步骤；Claude 在当前会话窗口里的推理轨迹、临时计划、工作节奏。
+
+/resume 不能：恢复本地的 .specify/、恢复 $\sim$/.factory/specs/、重新读懂你没 commit 的 WIP spec、替代 ADR/README/CLAUDE.md、跨账号/跨机器保证一致。
+
+\subsection{Droid /session}
+
+droid 的 /session 本质和 Claude 的 /resume 一样：都是会话级连续性，不是工程级状态恢复。
+
+\subsection{Spec 恢复依赖 Git}
+
+spec 的「恢复」本质上依赖的是 Git（以及 repo 内文档），而不是 /resume。只有两种来源：
 \begin{itemize}
-  \item 一组固定的 prompt 模板
-  \item 一些 if/when/condition
-  \item 一些行为约束
-  \item 一点"人类写的经验总结"
+    \item Git repo（代码 + docs）
+    \item 被 commit 的 ADR/WIP spec/README
 \end{itemize}
 
-\subsection{Skills 的不可靠性}
+除此之外，都是：临时缓存、会话残影、工具状态。
 
-\begin{enumerate}
-  \item \textbf{没有稳定接口}：模型一升级，行为就可能变化
-  \item \textbf{经验叠加}：是"我觉得这样好"，不是明确契约
-  \item \textbf{不可迁移}：博主的项目背景与你的完全不同
-  \item \textbf{营销载体}：制造信息差、暗示稀缺、承诺捷径
-\end{enumerate}
+工程上更稳的替代方案：WIP spec（docs/wip）、ADR（docs/adr）、清晰的 commit。这些东西：不靠会话、不靠模型、不靠工具。
 
-\subsection{Spec-driven 与 Skills 的关系}
-
-在 spec-driven 工作流中：
-\begin{itemize}
-  \item spec / plan / tasks 已经记录了决策
-  \item 不需要靠"skills 猜"
-  \item 模型最擅长明确任务、明确约束
-  \item 最不擅长模糊经验、玄学规则
-\end{itemize}
 
 \section{工程实践总结}
 
@@ -423,3 +288,52 @@ stash 是"可选的前置操作"，不是 rebase 的一部分：
 临时 spec 是工作记忆，main 只保留长期记忆；squash merge 的意义，不仅是压缩 commit，也是压缩思考噪音。
 
 \textbf{安全原则}："所有不确定性，都留在分支里；所有确定性，才进 main。"
+
+\subsection{何时需要 ADR 和 WIP Spec}
+
+在 droid coding 的过程中：你不需要「为了用 AI」而刻意维持 ADR 或 WIP spec。你只需要在「工程本身需要它们」的时候才写。
+
+\subsubsection{完全不需要的情况}
+
+满足以下条件之一：
+\begin{itemize}
+    \item 单人项目/小项目：你是唯一维护者、变更半天内完成、上下文都在你脑中
+    \item feature 局部、无长期影响：不影响架构、不引入新概念、不改变数据模型
+    \item droid coding 的「短反馈循环」：快速试、快速改、squash 掉
+\end{itemize}
+
+\subsubsection{需要 WIP Spec 的情况}
+
+满足以下任意一条：
+\begin{itemize}
+    \item feature 超过 1–2 天
+    \item 你需要「明天继续」
+    \item 你发现自己反复跟 AI 解释同一件事
+    \item 可能有人中途接手
+\end{itemize}
+
+写一个极简 WIP spec，不超过一页。
+
+\subsubsection{必须写 ADR 的情况}
+
+只有在这些情况下：
+\begin{itemize}
+    \item 做了不可逆或高成本决策
+    \item 明确否掉了「看似合理」的方案
+    \item 这个决定未来会被反复质疑
+\end{itemize}
+
+这是给未来人（包括你）用的，不是给 AI。
+
+\subsubsection{交接风险判断}
+
+只要满足以下任意一条：可能有第二个人接手、你自己可能换账号/换机器/中断一段时间。那么：工程级信息就不能只存在于 droid 的私有目录里，必须至少有 WIP spec；涉及不可逆决策时，必须有 ADR。
+
+30 秒判断法：在写代码前或 merge 前，问自己：「如果我明天请假两周，别人能接手吗？」
+\begin{itemize}
+    \item 能 $\to$ OK，不用写
+    \item 不能 $\to$ 至少写 WIP spec
+\end{itemize}
+
+\vspace{1em}
+\normalsize

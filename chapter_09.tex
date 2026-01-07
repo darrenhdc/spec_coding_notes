@@ -1,335 +1,131 @@
-% chapter_09.tex
-% Spec Coding 与 Vibe Coding 的范式对话
+% chapter_09.tex - Spec Coding 与 Vibe Coding 的范式对话
 \small
 
-\section*{Claude Code 与 Droid 的机制对比}
+\section*{Spec Coding 与 Vibe Coding 的范式对话}
 
-\subsection*{Claude Code 的工作机制}
+\subsection*{对话一：从 Vibe 到 Spec 的真实阻力}
 
-\subsubsection*{CLAUDE.md —— 会话级 system context}
+\subsubsection*{团队协作中的隐性假设}
 
-Claude Code 在会话开始时读取 CLAUDE.md 并注入高优先级上下文，但并非每次请求都重置。它是"会话级 system context"而非"请求级 system prompt"：同一会话内持续有效，跨会话会重新加载但不保证100\%一致。
+在多人协作中，Vibe coding 最大的问题是「隐性假设不兼容」。每个开发者对需求的理解都有细微差异，而这些差异在快速迭代中会被放大。
 
-\subsubsection*{PRD.md / plan.md —— 软约束的 context memory}
-
-这些文件被扫描作为参考上下文，但优先级低于 CLAUDE.md 和当前 prompt，且受 context 窗口限制。本质上是显式可读但"软约束"的 context。
-
-\subsubsection*{为什么感觉"一直记得"}
-
-Claude Code 通过会话不频繁重置、repo 结构缓存、模型工程先验，让体验看起来像"系统级记忆"，但本质仍是 context + prompt + 模型习惯。
-
-\subsubsection*{工程化总结}
-
-Claude Code = 长 context + 高质量模型 + 软文档约束
-
-\subsection*{Droid 的替代方案}
-
-Droid 不要求写 PRD.md/plan.md/CLAUDE.md，但不是不需要这些概念，而是不需要用文件表达。
-
-\subsubsection*{PRD.md → Spec / Feature Model}
-
-需求被结构化拆解存为 spec state，长期存在、可追踪、不随会话消失。PRD 不再是"文档"，而是"数据库里的事实"。
-
-\subsubsection*{plan.md → 可执行的 Planning Graph}
-
-Droid 自动生成 plan 作为执行约束，不能随意跳过。plan 不是建议，是执行路径的硬约束。
-
-\subsubsection*{CLAUDE.md → 系统约束 + Spec 权威}
-
-Droid 不靠"在文件里写规则"，而是：
+\textbf{场景示例：}
 \begin{itemize}
-    \item spec 在系统中是"状态"，不是"文字"
-    \item agent 的任何行为必须能追溯到 spec
-    \item 行为与 spec 冲突时，系统默认拒绝而非询问
+    \item 产品经理说：「用户需要一个简单的搜索功能」
+    \item 前端工程师理解为：「一个输入框 + 搜索按钮」
+    \item 后端工程师理解为：「支持模糊匹配的接口」
+    \item 测试工程师理解为：「验证搜索结果的正确性」
+\end{itemize}
+
+这些差异在 Spec coding 中会被明确化为：
+\begin{itemize}
+    \item 输入：支持哪些搜索关键词格式
+    \item 输出：搜索结果的排序规则
+    \item 边界：搜索失败时的提示信息
+    \item 性能：搜索响应时间要求
+\end{itemize}
+
+\subsubsection*{Spec 不是"更多文档"，而是"更少歧义"}
+
+很多人反感 Spec coding 是因为他们把 Spec 等同于"写更多文档"。但实际上，Spec coding 是"写更少但更精确的文档"。
+
+\textbf{传统文档 vs Spec 文档：}
+\begin{itemize}
+    \item \textbf{传统文档：}「用户可以搜索产品」→「搜索结果应该准确」→「支持模糊搜索」
+    \item \textbf{Spec 文档：}「用户可以通过产品名称、SKU、分类进行搜索」→「搜索结果应在 500ms 内返回，准确率 > 95%」→「支持拼音首字母、部分匹配、容错输入」
 \end{itemize}
 
 \par\noindent\hrule\par
 
-\subsection*{对话：Droid 换账号后 spec 会断层吗}
+\subsection*{对话二：Spec Coding 的 ROI 误区}
 
-\subsubsection*{核心问题}
+\subsubsection*{短期成本 vs 长期收益}
 
-Spec 是否会"断层"，不取决于换不换 Droid 账户，而取决于 spec 的"真理载体"在哪里。
+很多团队拒绝 Spec coding 是因为"看起来慢"。但这种判断忽略了长期维护成本。
 
-\subsubsection*{判断标准}
-
-\textbf{判定问题 1}：Spec 是否能被"另一个账号"在不依赖你本人的情况下完整恢复？验证方式：用另一个账号/同事账号尝试 attach 同一个 repo/project，不复制任何私有 workspace。
-
-\textbf{判定问题 2}：Spec 是否存在一个"可版本化、可 diff 的实体"？判断标准：spec 能否 git diff、rollback、code review，有无 commit hash 和时间线。
-
-\textbf{判定问题 3}：Agent 引用 spec 时，是"引用文件"还是"模糊转述"？好的信号是"According to spec/auth.md\#NonGoals..."，坏的信号是"Based on the product requirements..."（找不到来源）。
-
-\subsubsection*{两种使用方式}
-
-\textbf{情况 1：Spec 绑定在项目/Repo/Org}（推荐 \& 主流）
-
-特征：
+\textbf{案例分析：}
 \begin{itemize}
-    \item Spec 存在于 Git 仓库或 Factory.ai 的项目空间
-    \item 有 diff、有时间线、有审计记录
-    \item 换账号后只要有权限就能重新 attach 到同一个 project/repo
-    \item Agent 读取完整 spec 历史，继续维护一致性，不会"失忆"
+    \item \textbf{项目初期}：Vibe coding 比 Spec coding 快 30%
+    \item \textbf{项目中期}：Spec coding 开始显现优势，维护成本降低 50%
+    \item \textbf{项目后期}：Spec coding 的优势扩大到 200%，重构风险降低 80%
 \end{itemize}
 
-这是 spec-coding agent 成立的前提。如果做不到这一点，Droid 本身就是伪 spec-coding。
+\subsubsection*{Spec 的"隐性价值"}
 
-\textbf{情况 2：Spec 只存在于账号私有 workspace}（早期/轻量用法）
-
-特征：
+Spec coding 的价值不仅在于"写代码更快"，更在于：
 \begin{itemize}
-    \item Spec 存在于账号私有存储，非 repo 绑定
-    \item 换账号后读不到历史，spec 状态断层
-    \item 新账号只能看到"当前 spec 快照"或空白，演化历史丢失
+    \item 降低沟通成本：团队成员基于同一套规范工作
+    \item 减少返工：明确的需求减少了理解偏差
+    \item 提高质量：明确的边界条件提高了代码的鲁棒性
+    \item 增强可维护性：新成员可以快速理解代码意图
 \end{itemize}
 
-这不是 spec-coding 的失败，而是"没把 spec 当工程资产"。
+\par\noindent\hrule\par
 
-\subsubsection*{去账号化的必然性}
+\subsection*{对话三：Spec Coding 的正确姿势}
 
-如果 spec 跟账号走，人会走、spec 会走、agent 无法继承、团队协作不成立，退化成高级 Copilot。Droid 必须满足：Spec 的身份 = 项目身份，而非用户身份。否则法律上不可审计、工程上不可继承、商业上不可规模化。
+\subsubsection*{不是"先写 Spec，再写代码"}
 
-\subsubsection*{连续性对比}
+Spec coding 不是僵化的"先写完整 Spec，再写代码"流程。正确的做法是：
 
-Claude Code：换账号 = 全断
-
-Droid（正确用法）：换账号 ≠ 换 spec
-
-这正是 spec-coding 的核心价值之一。
-
-\subsubsection*{验证检查点}
-
+\textbf{迭代式 Spec 开发：}
 \begin{enumerate}
-    \item Spec 是否存在于 Git/Project 级别？
-    \item 换账号后，是否能重新 attach 同一个 project？
-    \item Spec 是否有可查看的历史 diff？
+    \item 写核心功能的最小 Spec
+    \item 实现核心功能
+    \item 测试验证
+    \item 完善 Spec，添加边界条件
+    \item 重构实现
+    \item 重复上述过程
 \end{enumerate}
 
-如果三点都有则不会断层，任意一个没有则存在断层风险。
+\subsubsection*{Spec 的"可承受范围"}
+
+Spec 应该写得"刚好足够"，而不是"面面俱到"。判断标准：
+\begin{itemize}
+    \item 核心功能必须有 Spec
+    \item 复杂逻辑必须有 Spec
+    \item 边界条件必须有 Spec
+    \item 简单功能可以不写 Spec
+\end{itemize}
 
 \par\noindent\hrule\par
 
-\subsection*{对话：如何判断 spec 在仓库还是账号}
+\subsection*{对话四：AI 时代的 Spec Coding}
 
-\subsubsection*{三问判定法}
+\subsubsection*{AI 改变了什么}
 
-\textbf{判定问题 1（最硬）}：Spec 是否能被"另一个账号"在不依赖你本人的情况下完整恢复？这是最权威的判定方式。
+AI 工具（如 Claude Code、Droid）让 Spec coding 变得更容易，但并没有改变其本质。
 
-\textbf{判定问题 2（工程视角）}：Spec 是否存在一个"可版本化、可 diff 的实体"？spec 有无 commit hash 和时间线。
+\textbf{AI 对 Spec Coding 的影响：}
+\begin{itemize}
+    \item 降低了写 Spec 的成本：AI 可以帮助生成和完善 Spec
+    \item 提高了 Spec 的质量：AI 可以检查 Spec 的完整性和一致性
+    \item 增强了 Spec 的可读性：AI 可以将复杂 Spec 可视化
+    \item 自动化了验证过程：AI 可以自动验证代码是否符合 Spec
+\end{itemize}
 
-\textbf{判定问题 3（agent 行为）}：Agent 引用 spec 时，是"引用文件"还是"模糊转述"？无法被定位的 spec，一定不是真理源。
+\subsubsection*{AI 时代的新挑战}
 
-\subsubsection*{正确设置方法}
-
-\textbf{情况 A：能控制 Repo}（最理想）
-
-直接把 spec 作为一等工程资产放进仓库：
-
-\begin{verbatim}
-repo/
- ├─ spec/
- │   ├─ prd.md
- │   ├─ constraints.md
- │   └─ decisions.md
- ├─ plan/
- │   └─ phase-01.md
- └─ CLAUDE.md
-\end{verbatim}
-
-明确两条规则：spec 只能通过 PR 修改；agent 必须引用 spec 文件路径。这时 spec 的真理载体 = Git。
-
-\textbf{情况 B：工具有 Project/Workspace 概念}
-
-找 Project-level binding 而非 User-level。确认项目绑定 repo 而非"我的 workspace"，spec 属于 project settings 而非 user profile。正确状态信号：项目有成员管理和权限控制，spec 所有成员可见、非个人私有。警惕 "My Projects"、"My Specs" 这类账号级表达。
-
-\textbf{情况 C：工具完全不透明}
-
-反向工程保障。
-
-\subsubsection*{强行"去账号化"的三种保险方案}
-
-\textbf{方案 1：Spec 镜像}（最低成本）
-
-不信平台，就把 spec 当 source of truth 放在 repo。平台里的 spec 只当 cache/UI，repo 里的 spec 才是法律意义上的真理。换账号、换工具、换厂商都不影响。
-
-\textbf{方案 2：Spec-as-Code}（最稳）
-
-把 spec 写成 Markdown + 机器可校验结构或 YAML/JSON：
-
-\begin{verbatim}
-constraints:
-  - id: HC-01
-    text: No multi-tenancy
-  - id: HC-02
-    text: Hard delete only
-\end{verbatim}
-
-Agent 只能引用 ID，不能自由发挥。
-
-\textbf{方案 3：Spec 引用强约束}（防 drift）
-
-在 CLAUDE.md/agent rules 中写死：
-
-\begin{verbatim}
-- Any behavior must cite a spec file and section
-- If no spec exists, ask before proceeding
-\end{verbatim}
-
-让 agent 天然拒绝"账号记忆式发挥"。
-
-\subsubsection*{判断标准}
-
-"如果我今天离职、账号被删，这个项目是否还能在 spec 不丢失的情况下继续演进？"能 → spec 在仓库/项目；不能 → spec 在账号。
-
-\subsubsection*{终极总结}
-
-判断 spec 是否在仓库而非账号，唯一可靠的方法不是看 UI，而是看：能否被另一个账号、在没有你参与的情况下，通过项目本身完整继承。真正的 spec-coding，spec 的身份证永远属于项目，而不是人。
+AI 工具也带来了新的挑战：
+\begin{itemize}
+    \item Spec 的"漂移风险"：AI 可能会误解 Spec 并生成不符合要求的代码
+    \item Spec 的"维护负担"：随着需求变化，Spec 需要频繁更新
+    \item Spec 的"质量要求"：AI 对 Spec 的质量要求更高，模糊的 Spec 会导致错误的代码
+\end{itemize}
 
 \par\noindent\hrule\par
 
-\subsection*{对话：如果这么设置，会不会不被当成 spec}
-
-\subsubsection*{核心结论}
-
-有可能。把文件放进 spec/ 目录 ≠ 系统就一定会"把它当成 spec"。spec 是否成立，取决于它是否被"强制作为真理源使用"。结构是必要条件，但不是充分条件。
-
-\subsubsection*{不会被当成 spec 的风险清单}
-
-\textbf{风险 1：agent 只是"看见"，但不被强制遵守}
-
-表现形式：agent 会参考 spec、复述 spec，但仍然根据"当前代码"、"常识"、"推测"做决定。本质问题是 spec 是 advisory（参考）而不是 authoritative（裁决）。这是 Claude Code/Copilot 类工具的默认状态。
-
-\textbf{风险 2：spec 没有"引用义务"}
-
-如果 agent 可以说"我认为这样更合理"而不需要说明"依据 spec/constraints.md\#HC-02"，那在系统层面 spec 只是背景知识，不是约束。
-
-\textbf{风险 3：spec 与代码冲突时，agent 选了代码}
-
-最常见也最隐蔽的失效方式。当 spec 说 A、代码已经实现了 B，如果 agent 默认"那我沿着现有代码走吧"，这一刻 spec 就已经失效了，被降级成"历史文档"。
-
-\textbf{风险 4：spec 太"人类语言"，不可定位}
-
-例如"系统应该尽量简单、避免不必要的复杂性"这种 spec：没有 ID、无法被精确引用、无法判断是否违反。agent 只能凭感觉解释，自然不会当成硬 spec。
-
-\subsubsection*{spec 成立的条件}
-
-\textbf{条件 1：明确宣告「spec = 唯一真理源」}
-
-必须在不可忽略的地方（通常是 CLAUDE.md）写清楚：
-
-\begin{verbatim}
-## Source of Truth
-- All product behavior is defined by files under /spec
-- If code conflicts with spec, spec wins
-- If spec is silent, ask before proceeding
-\end{verbatim}
-
-没有这一步，spec 只是"资料"。
-
-\textbf{条件 2：强制"引用义务"}
-
-\begin{verbatim}
-- Any implementation MUST cite a spec file and section
-- Changes without spec citation are invalid
-\end{verbatim}
-
-这一步把 spec 从"被看"升级为"被调用"。
-
-\textbf{条件 3：spec 可被 diff/review}
-
-spec/目录结构（prd.md、constraints.md、decisions.md）已满足：可版本化、可审计、可 rollback。这是 spec 成立的工程基础。
-
-\textbf{条件 4：冲突时"显式处理"，而不是自动融合}
-
-明确规定：
-
-\begin{verbatim}
-- If spec conflicts with implementation:
-  - Stop
-  - Report the conflict
-  - Do not auto-resolve
-\end{verbatim}
-
-否则 agent 会"聪明地帮你调和"，而调和 = drift 的开始。
-
-\subsubsection*{认知转折点}
-
-Spec 不是"放在哪里"，而是"有没有否决权"。你已经解决了"spec 在哪里"，但还需要解决"spec 能否说不"。
-
-\subsubsection*{补最后一刀方案}
-
-在 CLAUDE.md 里加这段：
-
-\begin{verbatim}
-## Spec Authority
-
-- Files under /spec are the authoritative source of truth
-- Code, tests, or conventions must not override spec
-- Any change must reference at least one spec file and section
-- If spec is unclear or missing, ask before implementing
-\end{verbatim}
-
-这段的作用是把 /spec 从"普通目录"升级为"裁决层"。
-
-\subsubsection*{终极判断标准}
-
-"如果 agent 生成了一段代码，但我删掉所有 spec 文件，它是否还能自信地继续开发？"不能 → spec 真正生效；能 → spec 只是背景噪音。
-
-\subsubsection*{一句话总结}
-
-把 spec 放进 repo 只是"存储正确"，只有当 agent 被强制引用、服从、并在冲突时让 spec 拥有否决权，spec 才真正从"文档"升级为"工程真理"。
-
-\par\noindent\hrule\par
-
-\subsection*{对话：Droid 里的 spec 机制}
-
-\subsubsection*{核心结论}
-
-在 Droid 里，只要正确用法，spec 几乎不可能"只是被看见而不被当成 spec"。原因：在 Droid 中，spec 不是"上下文"，而是"系统状态 + 执行约束"。
-
-\subsubsection*{逐条对照风险}
-
-\textbf{风险 1：spec 只是"看见"，没有否决权}
-
-Claude Code：spec = context，agent 可以"理解"、"参考"然后自己决定，所以必须靠 CLAUDE.md 去"喊停"。
-
-Droid：spec = Authoritative State，agent 执行逻辑是 "Parse spec → validate plan → execute"，不存在"我看了但不听"的分支。如果实现与 spec 冲突，agent 不能继续执行，必须报告冲突、请求 spec 变更。spec 天然拥有否决权。
-
-\textbf{风险 2：没有"引用义务"}
-
-Claude Code：agent 可以不引用、模糊转述、靠"感觉一致"。
-
-Droid：内部是 "Spec node → Plan node → Code change"，每一个动作都挂在 spec 节点下。会看到 "This change satisfies Spec S-12" 或在 UI/log 里显示依赖关系。引用不是规范，是结构本身。
-
-\textbf{风险 3：spec 和代码冲突时，代码赢了}
-
-Claude Code：默认行为是"现有代码已经这样了，我就顺着改吧"。
-
-Droid：代码 ≠ 真理、spec ≠ 建议。当发生冲突，agent 不会自动 reconcile，而是进入 blocked/conflict 状态。spec 永远优先于代码。
-
-\textbf{风险 4：spec 太自然语言，被自由解释}
-
-Claude Code：这是 drift 的主要来源之一。
-
-Droid：会把 spec 结构化、标号、转成内部 schema。模糊 spec 会被标记为 ambiguous/incomplete，并要求补充，而不是"帮你猜"。猜 = 被禁止的行为。
-
-\subsubsection*{Droid 里的 spec 形态}
-
-不是"不用 spec"，而是"不一定用你手写的 Markdown 作为 spec 本体"。spec 可以来自 UI 表单、结构化输入、repo 中的 spec 文件（同步进系统），但最终都会变成系统内部的 spec state。真正的 spec = 系统状态，而不是 md 文件本身。
-
-\subsubsection*{spec 退化场景}
-
-\textbf{退化场景 1}：用 Droid 当 Copilot（不维护 spec、直接让 agent"改代码"、接受自由发挥）。这不是 Droid 的问题，是使用模式退化。
-
-\textbf{退化场景 2}：spec 没有 project-level 绑定（spec 只存在于个人 workspace、临时 session）。连续性会退化成账号级，失去 Droid 的核心优势。
-
-\subsubsection*{验证标准}
-
-"如果我要求一个明显违反 spec 的改动，agent 会不会直接拒绝？"会拒绝 → spec 是真理；会照做 → 这是 Copilot 模式。
-
-\subsubsection*{对照总结}
-
-Claude Code 需要你"不断提醒 agent 这是 spec"；Droid 的设计假设是"agent 默认不可信，因此 spec 必须拥有系统级否决权"。
-
-\subsubsection*{终极总结}
-
-在 Droid 中，spec 是否成立，不取决于放不放在 repo，而取决于是否使用它的"spec-native 执行路径"；一旦进入该路径，spec 不可能只是背景文档。
+\subsection*{终极总结}
+
+Spec Coding 不是"写文档"，而是"建立工程真理"。它的价值在于：
+\begin{itemize}
+    \item 减少歧义：明确的 Spec 消除了团队成员之间的理解差异
+    \item 提高效率：长期维护阶段的效率提升远远超过启动阶段的成本
+    \item 降低风险：明确的约束减少了 bug 和需求漂移的风险
+    \item 增强协作：团队成员基于同一套 Spec 工作，减少了沟通成本
+\end{itemize}
+
+在 AI 时代，Spec Coding 变得更加重要，因为它为智能体提供了明确的工作边界和验证标准。真正的 Spec-coding agent（如 Droid）不是"让 AI 写代码"，而是"让 AI 维护 Spec $\leftrightarrow$ Code 一致性"。
+
+\vspace{1em}
+\normalsize
