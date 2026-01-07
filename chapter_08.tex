@@ -1,0 +1,693 @@
+% chapter_08.tex
+% Lines 63853 to 72988 of original content
+
+{\small
+
+\section*{Chapter 8: LSP, Spec Coding, and System Design}
+
+\subsection*{OpenCode vs Claude Code: Why LSP is Explicit vs Implicit}
+
+\subsubsection*{Core Question: Why does OpenCode highlight LSP as a feature?}
+
+OpenCode 把「显式 LSP」当卖点，不是因为它比 Claude Code / Droid 更"先进"，而是因为它解决的是「开源、可控、可验证」这个层级的问题。
+
+\textbf{一句话对比：}
+\begin{itemize}
+  \item Claude Code / Droid："我有，但你别管"
+  \item OpenCode："我有，而且你可以看、可以控、可以换"
+\end{itemize}
+
+\subsubsection*{Why Claude Code / Droid Don't Mention LSP}
+
+对于闭源/强系统来说，LSP 是"理所当然的内脏器官"：
+\begin{itemize}
+  \item LSP ≈ AST / symbol graph / semantic index
+  \item 是 agent 的基础设施
+  \item 用户无权、也无必要干预
+\end{itemize}
+
+它们的叙事是"我理解你的代码"，而不是"我用 LSP 理解你的代码"。显式暴露 LSP 反而会"降低抽象层级"——如果你还需要选 LSP、看诊断，说明 agent 没把事情做好。
+
+\subsubsection*{Why OpenCode Must Highlight LSP}
+
+\textbf{1. OpenCode 是「开源 Agent 框架」，不是「封装好的 Agent」}
+
+用户是开发者、架构师、OSS 社区、企业 IT/安全团队。他们关心的是：
+\begin{itemize}
+  \item AI 到底"看到了什么"
+  \item 是否真的理解代码
+  \item 能不能在我环境里复现
+\end{itemize}
+
+显式 LSP = 可验证的工程承诺。
+
+\textbf{2. OpenCode 必须对抗一个默认怀疑}
+
+在开源世界："你说你理解代码？你是不是只是 grep + prompt？"
+
+OpenCode 用 "LSP enabled" 明确告诉你：
+\begin{itemize}
+  \item 我不是纯文本 agent
+  \item 我走的是标准语言协议
+  \item 我能跑在你的本地环境
+\end{itemize}
+
+这是信任构建，而不是炫技。
+
+\textbf{3. OpenCode 需要和「聊天式 AI」明确切割}
+
+最大的竞争对手不是 Claude Code / Droid，而是"CLI 聊天机器人"、"包了一层 UI 的 ChatGPT"。LSP 是最好、最直观的工程信号："我是工程 agent，不是 chat bot"。
+
+\textbf{4. OpenCode 的"可替换性焦虑"}
+
+OpenCode 的定位是 Model-agnostic Agent Runtime，意味着模型随时可能换，能力不能依赖模型"聪明"。那什么是\textbf{不随模型变化的确定性能力}？
+
+LSP：本地、确定、可测试、和模型能力解耦。
+
+\subsubsection*{Spec-Coding 视角下的理解}
+
+你之前问过的 memory、spec 连续性、账号切换，都是在问："什么东西是不随模型、不随 context 漂移的？"
+
+答案其实是同一类：spec（文档）、LSP（结构化代码理解）、repo（工程事实）。OpenCode 在 marketing 上把这些都"显式化"了。
+
+\subsubsection*{Ultimate Analogy}
+\begin{itemize}
+  \item Claude Code / Droid → iPhone：强、封闭、不让你看基带
+  \item OpenCode → Linux：你能看到内核、能选驱动、能自己编
+\end{itemize}
+
+\textbf{一句话总结：}LSP 在 Claude Code / Droid 中是"默认前提"，在 OpenCode 中是"公开承诺"；前者追求抽象完成度，后者追求可控与可验证。
+
+% =================================================================
+
+\subsection*{LSP-First Workflow: How to Use LSP Effectively}
+
+在大多数 AI coding agent 里，你"不会直接使用 LSP"，而是通过"正确的工作方式"让 agent 去用 LSP。
+
+\subsubsection*{Core Principle}
+
+LSP 不是一个你去点的功能，而是一套你要"逼着 agent 依赖"的事实来源。你要做的不是"操作 LSP"，而是：
+\begin{itemize}
+  \item \textbf{让 agent 必须通过 LSP 才能回答}
+  \item \textbf{不允许它靠猜}
+\end{itemize}
+
+\subsubsection*{Four LSP-First Behaviors}
+
+\textbf{1. 要求基于符号而不是文本行动}
+
+错误示例（不触发 LSP）："把这个函数改一下，让它更清晰"
+
+正确示例（强烈触发 LSP）："重构 UserService.createUser，要求：不改变 public signature、更新所有调用点、如果有类型冲突，指出具体文件和行号"
+
+👉 这类要求没有 LSP 几乎做不到。
+
+\textbf{2. 要求 agent 定位定义 / 引用}
+
+"在当前 repo 中：找到 PaymentProcessor 的定义、列出所有直接调用它的地方、判断是否存在循环依赖"
+
+👉 这是标准 LSP query（go to definition / find references）。
+
+\textbf{3. 要求类型级别的保证}
+
+"确认这个改动：不引入新的 TypeScript 类型错误、不破坏 Rust 的 borrow 规则、不改变 Python public API 的 typing"
+
+👉 没有 LSP，这只能靠"感觉"；有 LSP，这是确定性检查。
+
+\textbf{4. 让 agent 先分析再改代码}
+
+"在修改任何代码前：用语言服务器分析相关模块、总结当前结构和依赖、再给出修改方案"
+
+这一步会把 agent 强制拉到 LSP → plan → edit 的路径。
+
+\subsubsection*{Tool-Specific Usage}
+
+\textbf{OpenCode：} 你最能"看见" LSP 的地方
+\begin{itemize}
+  \item 自动检测语言、启动对应 LSP、把 LSP 查询结果喂给 agent
+  \item 用"工程型指令"驱动 agent
+  \item 当 agent 犯错时，你可以说："不要猜，如果不确定，请用语言服务器确认"——这句话真的有约束力
+\end{itemize}
+
+\textbf{Claude Code：} LSP 是"隐式的"，但你仍然能用
+\begin{itemize}
+  \item ❌ 你看不到、❌ 你不能配置、✅ 你可以通过任务形式逼它用
+  \item 永远避免"模糊改法"，要说"通过分析类型和引用关系，重构 X，不允许破坏现有调用"
+  \item 要求"失败就说不知道"："如果无法通过静态分析确认，请明确说明不确定性"
+\end{itemize}
+
+\textbf{Droid：} 你甚至不用关心 LSP
+\begin{itemize}
+  \item LSP = 系统底层事实源
+  \item 你只需要说："根据当前 spec，修改实现，不允许引入未声明行为"
+  \item Droid 会自动走 LSP → spec → code
+\end{itemize}
+
+\subsubsection*{Counter-Intuitive Truth}
+
+你越"手动操作 LSP"，越说明 agent 设计得不够好。真正成熟的 agent 工作流是：
+\begin{verbatim}
+你的指令
+  ↓
+spec / intent
+  ↓
+LSP / AST / graph（自动）
+  ↓
+修改方案
+  ↓
+最小安全改动
+\end{verbatim}
+
+\subsubsection*{Five Rules to Maximize LSP Value}
+\begin{enumerate}
+  \item 永远用符号名，不用"这个函数"
+  \item 要求更新所有引用
+  \item 要求类型不变 / API 不变
+  \item 先分析，再实现
+  \item 允许 agent 说"不确定，需要确认"
+\end{enumerate}
+
+\textbf{一句话总结：}使用 LSP 的关键不在于"操作它"，而在于"提出只有 LSP 才能完成的任务"。
+
+% =================================================================
+
+\subsection*{PRD.md, plan.md, CLAUDE.md: Three-Layer Control System}
+
+\subsubsection*{One-Sentence Overview}
+
+\begin{itemize}
+  \item PRD.md = 为什么要做（What \& Why）
+  \item plan.md = 打算怎么做（How, at 设计层）
+  \item CLAUDE.md = Claude 在这个 repo 里"该如何当一个工程师"
+\end{itemize}
+
+三者不是同一层级的文档，而是三层控制面。
+
+\subsubsection*{PRD.md — 产品事实层（Intent / Truth）}
+
+PRD 是"需求的真理来源"，不是给 Claude 发挥的，而是用来约束 Claude 的。
+
+\textbf{解决的问题：}
+\begin{itemize}
+  \item 要做什么功能
+  \item 用户是谁
+  \item 行为边界在哪里
+  \item \textbf{不做什么（非常重要）}
+\end{itemize}
+
+\textbf{特性：}稳定（不频繁改）、非技术为主、人 \& AI 都要遵守
+
+\textbf{典型内容：}
+\begin{verbatim}
+# Product Requirements
+
+## Goals
+- 用户可以创建 / 编辑 / 删除任务
+
+## Non-Goals
+- 不支持多租户
+- 不支持权限系统
+
+## User Stories
+- As a user, I can ...
+\end{verbatim}
+
+\textbf{不该有的东西：}技术选型、文件结构、类名/函数名
+
+\subsubsection*{plan.md — 技术决策层（Design / Architecture）}
+
+plan.md 是"在不违反 PRD 的前提下，我们决定如何实现"。这是工程设计文档。
+
+\textbf{解决的问题：}
+\begin{itemize}
+  \item 用什么技术栈
+  \item 模块怎么拆
+  \item 数据流 / 控制流
+  \item 关键 trade-off
+\end{itemize}
+
+\textbf{特性：}比 PRD 更易变、强技术导向、给 Claude 一个"不要乱设计"的边界
+
+\textbf{典型内容：}
+\begin{verbatim}
+# Implementation Plan
+
+## Architecture
+- Frontend: React
+- Backend: FastAPI
+
+## Key Decisions
+- 使用 REST 而不是 GraphQL（原因：简单）
+
+## Constraints
+- 不引入 ORM
+- 保持 API 向后兼容
+\end{verbatim}
+
+\textbf{不该有的东西：}具体代码实现、逐行逻辑、prompt 指令
+
+\subsubsection*{CLAUDE.md — Agent 行为控制层（Meta / Governance）}
+
+这是 Claude Code 特有、也是最容易被低估的文件。
+
+CLAUDE.md 不是"项目文档"，而是"Claude 的操作手册"。
+
+\textbf{解决的问题：}
+\begin{itemize}
+  \item Claude 在这个 repo 里应该怎么工作
+  \item 什么时候可以改代码
+  \item 什么时候必须先问
+  \item 使用什么风格 / 规则
+\end{itemize}
+
+这是对 AI 的"constitution"。
+
+\textbf{典型内容：}
+\begin{verbatim}
+# Claude Instructions
+
+## General Rules
+- 不得引入新依赖，除非明确说明
+- 修改前必须先分析影响范围
+
+## Coding Style
+- 使用函数式风格
+- 所有 public API 必须有注释
+
+## Workflow
+- 修改前先总结计划
+- 不允许直接大规模重构
+\end{verbatim}
+
+\textbf{不适合放的内容：}产品需求（那是 PRD）、技术架构（那是 plan）、临时聊天指令（那是 prompt）
+
+\subsubsection*{Control Direction Comparison}
+
+\begin{tabular}{l|l|l|l}
+文件 & 控制谁 & 控制什么 & 稳定性 \\ \hline
+PRD.md & 人 + AI & 产品边界 & ✅ 高 \\
+plan.md & AI 为主 & 技术实现方式 & ⚠️ 中 \\
+CLAUDE.md & Claude & 行为 / 决策方式 & ✅ 高 \\
+\end{tabular}
+
+可以理解为：PRD = 法律，plan = 施工图，CLAUDE.md = 施工队操作规范。
+
+\subsubsection*{How They Work Together in Claude Code}
+
+理想的 Claude Code 开发流程：
+\begin{enumerate}
+  \item Claude 读取 CLAUDE.md → 知道「我该怎么当一个工程师」
+  \item Claude 参考 PRD.md → 知道「我不能越界」
+  \item Claude 遵循 plan.md → 知道「我该怎么实现」
+  \item Claude 才会：分析、提出修改、实现代码
+\end{enumerate}
+
+\subsubsection*{Common Errors}
+
+\textbf{错误 1：}把指令写进 PRD —— "你应该用 React 实现这个功能" → 这是 plan，不是 PRD。
+
+\textbf{错误 2：}把 prompt 临时规则塞进 plan —— "你修改前要先确认类型" → 这是 CLAUDE.md。
+
+\textbf{错误 3：}没有 CLAUDE.md，却抱怨 Claude "乱来" → 没有行为约束，AI 必然发挥。
+
+\subsubsection*{Spec-kit Mapping}
+
+如果用 spec-kit：
+\begin{itemize}
+  \item spec-kit 文件 → 对应概念
+  \item spec.md → PRD（功能级）
+  \item plan.md → plan
+  \item constitution.md ≈ CLAUDE.md
+\end{itemize}
+
+\textbf{一句话总结：}PRD.md 决定"能不能做"，plan.md 决定"怎么做"，CLAUDE.md 决定"Claude 做事像不像一个靠谱工程师"。
+
+% =================================================================
+
+\subsection*{Implicit vs Explicit: What Happens Without PRD/plan/CLAUDE.md?}
+
+\subsubsection*{Core Conclusion}
+
+会"看起来像在执行"，但不是在"可靠地执行"。
+
+换句话说：
+\begin{itemize}
+  \item ✅ Claude Code 在没有 PRD / plan / CLAUDE.md 的情况下，会隐式模拟一个类似流程
+  \item ❌ 但这个流程是：不稳定的、不可审计的、不可继承的、不可复现的
+\end{itemize}
+
+\subsubsection*{What Claude Code Actually Does Without Documents}
+
+Claude Code 并不是"无流程"，而是：把 PRD / plan / 行为规范，全都临时塞进了对话上下文里。
+
+可以理解为：
+\begin{verbatim}
+prompt + 当前 repo
+= 即时 PRD
+= 即时 plan
+= 即时 CLAUDE.md
+\end{verbatim}
+
+这些东西存在，但：只存在于当前对话、不可见、不可复用、不可校验。
+
+\subsubsection*{Why It Feels Like It Works}
+
+\textbf{1️⃣ 模型本身内建了「优秀工程师的隐式模式」}
+
+Claude 非常擅长：先解释理解、再提出方案、最后写代码。这是模型训练出来的"默认行为"。
+
+\textbf{2️⃣ Claude Code 自动做 repo 分析（含 LSP / AST）}
+
+即使你没说，它也会：扫描项目结构、猜测架构、找入口点。这让它看起来像是有 plan。
+
+\textbf{3️⃣ 人类 prompt 本身往往是"半个 PRD"}
+
+你通常会说："我要实现 X，要求 Y，不要 Z"。这已经是一个简化版 PRD 了。
+
+\subsubsection*{The Distortion Points}
+
+\textbf{❌ 1️⃣ PRD 是"隐式的"，所以会漂移}
+
+你第一轮说的"不做 Z"，下一轮对话没再提，Claude Code 很可能：忘了、或重新假设。这不是 bug，是上下文的自然衰减。
+
+\textbf{❌ 2️⃣ plan 是"即时生成的"，不是长期约束}
+
+Claude Code 的 plan是："我这一次觉得怎么实现最好"，而不是"我们项目约定的实现方式"。所以下一次它可能：用另一种架构、引入你不想要的依赖。
+
+\textbf{❌ 3️⃣ Claude 的"行为规范"每次都会重算}
+
+没有 CLAUDE.md：Claude 每次都会重新决定：我是激进还是保守？要不要重构？要不要加新抽象？
+
+👉 这就是你有时觉得它"太聪明反被聪明误"的原因。
+
+\subsubsection*{When Implicit Process Breaks Down}
+
+这种"隐式流程"在以下条件下确实够用：项目小、文件少、需求稳定、主要是你一个人在用、你随时盯着它。
+
+在这种条件下：Claude Code ≈ 高级 pair programmer。
+
+\textbf{什么时候它会开始"明显失控"？}
+\begin{itemize}
+  \item 项目超过 ~20–30 个文件
+  \item 开始重构 / 返工
+  \item 多次跨会话继续开发
+  \item 你想让它"记住之前的决定"
+\end{itemize}
+
+这时你会发现：它忘了之前说过的话、行为风格不一致、开始引入"没约定过的东西"。
+
+\subsubsection*{The Real Value of PRD/plan/CLAUDE.md}
+
+不是让 Claude"更聪明"，而是让 Claude"更稳定"。它们的作用是：把"隐式、一次性的智能"变成"显式、可复用的约束"。
+
+\subsubsection*{Accurate Analogy}
+
+不写 PRD / plan / CLAUDE.md 的 Claude Code ≈ 一个经验丰富、但没有设计文档的高级工程师。
+
+他能：快速写代码、解决问题。
+
+但：难以交接、难以回溯、难以规模化。
+
+\textbf{一句话总结：}Claude Code 在没有 PRD / plan / CLAUDE.md 时，会"临时模拟"一个开发流程；但一旦你需要稳定性、可继承性和长期一致性，这些文件就从"可选"变成了"必需"。
+
+% =================================================================
+
+\subsection*{Hallucination vs Drift: Two Types of AI Errors}
+
+\subsubsection*{Definitions}
+
+\textbf{Hallucination =} 模型在"不知道或不确定"的情况下，仍然自信地生成看起来合理、但实际上是错误或不存在的信息。中文常译为：幻觉 / 虚构 / 编造事实。
+
+在你这个上下文里：
+\begin{itemize}
+  \item hallucination：编造事实
+  \item drift：偏离约束
+\end{itemize}
+
+两者经常一起出现，但不是一回事。
+
+\subsubsection*{Typical Manifestations}
+
+\textbf{代码场景：}
+\begin{itemize}
+  \item 编造不存在的函数 / API
+  \item 猜错类型签名
+  \item 说"这个函数在 X 文件里"，但实际上不存在
+  \item 生成看起来很对、但项目里根本没有的模块
+\end{itemize}
+
+\textbf{文档 / spec 场景：}
+\begin{itemize}
+  \item 声称"PRD 要求了某行为"，但 PRD 里根本没写
+  \item 引用不存在的设计决策
+\end{itemize}
+
+\subsubsection*{Relationship Between Hallucination and Drift}
+
+\begin{tabular}{l|l|l}
+维度 & Hallucination & Drift \\ \hline
+本质 & 编造不存在的事实 & 偏离原有约束 \\
+时间维度 & 往往是单次 & 通常是累积的 \\
+是否一定错误 & ✅ 是 & ❌ 不一定马上错 \\
+是否和记忆有关 & ❌ 不一定 & ✅ 强相关 \\
+是否可被 LSP 抑制 & ✅ 很大程度 & ❌ 只能部分 \\
+\end{tabular}
+
+\textbf{一个非常典型的组合场景：}
+\begin{enumerate}
+  \item 没有明确 spec / LSP 约束
+  \item 模型猜了一个 API（hallucination）
+  \item 后续修改都基于这个错误假设
+  \item 整个实现逐步偏离真实设计（drift）
+\end{enumerate}
+
+👉 hallucination 往往是 drift 的起点。
+
+\subsubsection*{How LSP/Spec-Coding Reduces Hallucination}
+
+\textbf{✅ LSP 对 hallucination 的抑制作用：}
+
+LSP 提供：符号表、类型系统、引用关系。这些是：本地的、确定的、不靠模型"猜"的。
+
+👉 你在用 LSP-first prompt，其实是在反 hallucination。
+
+\textbf{✅ spec 对 hallucination 的抑制作用：}
+
+spec 明确：做什么、不做什么。减少：自由发挥空间、编造需求的可能。
+
+\subsubsection*{Standard English Expressions}
+
+\textbf{名词：}hallucination, model hallucination, LLM hallucination
+
+\textbf{动词：}hallucinate —— "The model hallucinated an API that doesn't exist."
+
+\textbf{工程文档常见说法：}
+\begin{itemize}
+  \item "This response contains hallucinated APIs."
+  \item "To reduce hallucination, rely on LSP-based analysis."
+  \item "The agent should explicitly say 'unknown' instead of hallucinating."
+\end{itemize}
+
+\subsubsection*{Key Sentence}
+
+"LSP-first workflows significantly reduce hallucination, while explicit specs are necessary to prevent drift."
+
+\textbf{一句话总结：}Hallucination 是"凭空编造"，Drift 是"逐步跑偏"；前者靠 LSP 和事实源解决，后者靠 spec 和结构化流程解决。
+
+% =================================================================
+
+\subsection*{Droid's Internalization: PRD/plan/CLAUDE.md as System Components}
+
+\subsubsection*{Core Conclusion}
+
+在 Droid 中：PRD / plan / CLAUDE.md 不再是三个并列文件，而是被提升为「系统级状态」与「agent 约束层」。
+
+也可以说：
+\begin{itemize}
+  \item Claude Code：你显式写文档，Claude 读
+  \item Droid：系统原生维护这些"角色"，你只是在编辑其中一部分
+\end{itemize}
+
+\subsubsection*{Mapping Table}
+
+\begin{tabular}{l|l|l}
+你熟悉的文件 & 在 Droid 中对应的是 & 本质变化 \\ \hline
+PRD.md & Product / Feature Spec（系统真理层） & 从"文档"→"主事实源" \\
+plan.md & Implementation Plan Graph（执行图） & 从"说明"→"可执行结构" \\
+CLAUDE.md & Agent Policy / Constitution（行为宪法） & 从"说明文件"→"硬约束" \\
+\end{tabular}
+
+\subsubsection*{PRD.md in Droid: Spec as System Truth}
+
+在 Droid 里，PRD 不是一个普通 Markdown 文件，而是：被解析、被结构化、被持续校验。
+
+可以理解为：PRD → Feature Spec → 系统的"事实模型"。
+
+\textbf{在 Droid 中，PRD 的特性：}
+\begin{itemize}
+  \item ✅ 是唯一真理来源
+  \item ✅ 每一行 spec 都是：可引用、可追踪、可验证
+  \item ✅ 实现必须能：指回 spec，否则会被认为是"越界行为"
+\end{itemize}
+
+📌 这一步是 spec-coding 的核心差异。
+
+\textbf{和 Claude Code 的关键不同：}
+
+\begin{tabular}{l|l}
+Claude Code & Droid \\ \hline
+PRD 是"参考材料" & PRD 是"约束条件" \\
+可以被忽略 & 不能被违反 \\
+只在 prompt 里生效 & 在系统中长期生效 \\
+\end{tabular}
+
+\subsubsection*{plan.md in Droid: Executable Implementation Graph}
+
+在 Claude Code + spec-kit 里：plan.md 是设计说明，给 Claude "参考"。
+
+在 Droid 里：plan 是 agent 要"执行"的对象，而不是"阅读"的对象。
+
+Droid 的 plan 本质上是一个依赖图 / 任务图，包含：顺序、并行、前置条件、回滚点。
+
+可以理解为：
+\begin{verbatim}
+plan.md（人类可读）
+↓
+Droid 内部：
+Implementation DAG / State Machine
+\end{verbatim}
+
+\textbf{关键差异一句话：}Claude Code 的 plan 是"建议"，Droid 的 plan 是"执行约束"。
+
+\subsubsection*{CLAUDE.md in Droid: Agent Constitution as Policy}
+
+这是最本质、也最容易忽略的一点。
+
+在 Claude Code：CLAUDE.md = "Claude，请你在这个项目里这么做"。
+
+在 Droid：Agent 的行为规则不是文件，而是系统的一部分。
+
+\textbf{Droid 的 Agent Policy 包含：}
+\begin{itemize}
+  \item 什么时候可以改代码
+  \item 什么时候必须先分析
+  \item 什么时候必须拒绝
+  \item 如何处理不确定性
+  \item 如何防 hallucination / drift
+\end{itemize}
+
+这些规则：❌ 你不能随意覆盖、❌ 不是 prompt、✅ 是 agent 的"操作系统"。
+
+📌 这也是为什么 Droid 看起来"更保守、更慢"，但更稳。
+
+\subsubsection*{Intuitive Analogy}
+
+\textbf{Claude Code 世界：}
+\begin{verbatim}
+你（人）
+ ├─ PRD.md        ← 给 Claude 看
+ ├─ plan.md       ← 给 Claude 看
+ └─ CLAUDE.md     ← 教 Claude 怎么做事
+\end{verbatim}
+
+\textbf{Droid 世界：}
+\begin{verbatim}
+Droid 系统
+ ├─ Spec Engine        ← PRD 内生
+ ├─ Planning Engine    ← plan 内生
+ └─ Policy Engine      ← CLAUDE.md 内生
+
+你只是在编辑"输入"，不是在教 agent 怎么工作。
+\end{verbatim}
+
+\subsubsection*{Paradigm Shift}
+
+你前面所有问题，其实都指向这一点：
+\begin{itemize}
+  \item Claude Code + spec-kit 是"把人类工程流程教给 AI"
+  \item Droid 是"把工程流程变成 AI 系统本身"
+\end{itemize}
+
+\textbf{一句话总结：}在 Droid 中，PRD 变成了系统真理，plan 变成了可执行结构，CLAUDE.md 变成了 agent 的宪法；你不再"教 AI 怎么做事"，而是在"向一个有工程纪律的系统输入事实"。
+
+% =================================================================
+
+\subsection*{Context vs System Prompt: Claude Code vs Droid Memory}
+
+\subsubsection*{Claude Code's Mechanism}
+
+在 Claude Code 中：PRD.md / plan.md / CLAUDE.md 本质上都是「长期 context」，不是每次提问的 system prompt。
+
+\textbf{1️⃣ CLAUDE.md — 最接近 system prompt，但仍不是"每次重置"}
+
+Claude Code 会：在会话开始时读取 CLAUDE.md、把它注入到一个高优先级上下文。
+
+但它不是：OpenAI API 那种「每次请求都重新塞 system prompt」。
+
+更准确的说法是：CLAUDE.md 是"会话级 system context"，不是"请求级 system prompt"。
+
+📌 含义：
+\begin{itemize}
+  \item 同一个 Claude Code 会话里：✅ 一直有效
+  \item 跨会话：❌ 不保证 100\% 一致（但通常会重新加载）
+\end{itemize}
+
+\textbf{2️⃣ PRD.md / plan.md — 明确是 context memory}
+
+Claude Code 会：在 repo 中扫描这些文件、作为"参考上下文"加载。
+
+但它们：❌ 优先级低于 CLAUDE.md、❌ 低于你当前 prompt、❌ 会受到 context 窗口限制。
+
+所以它们是：显式、可读、但"软约束"的 context。
+
+\textbf{3️⃣ 为什么你感觉「它好像一直记得」？}
+
+因为 Claude Code 做了三件事：会话不频繁重置、对 repo 结构有缓存、模型本身有很强的工程先验。
+
+👉 这让它"看起来像系统级记忆"，但本质仍然是 context + prompt + 模型习惯。
+
+\textbf{用一句工程化的话总结 Claude Code：}Claude Code = 长 context + 高质量模型 + 软文档约束。
+
+\subsubsection*{Droid's Mechanism}
+
+Droid 不"要求"你写 PRD.md / plan.md / CLAUDE.md 这三个文件。
+
+但注意：不是"不需要这些概念"，而是"不需要你用文件去表达"。
+
+\textbf{1️⃣ PRD.md → 系统内生的 Spec / Feature Model}
+
+你输入需求，系统会：结构化、拆解、存成 spec state。这个 spec：✅ 长期存在、✅ 可追踪、✅ 不随会话消失。
+
+👉 PRD 不再是"文档"，而是"数据库里的事实"。
+
+\textbf{2️⃣ plan.md → 可执行的 Planning Graph}
+
+你不写："plan.md 请你照着做"。而是：Droid 自动生成、并作为执行约束。你甚至不能随意跳过 plan。
+
+\textbf{3️⃣ CLAUDE.md → Agent 的硬编码 Policy}
+
+这是最大差异点。在 Droid 中，agent 的行为规则：不是 prompt、不是文档、不是可随意覆盖的，而是：系统级 policy，类似"操作系统内核规则"。
+
+👉 你不"教 Droid 怎么做事"，你只是向一个有纪律的系统提供输入。
+
+\subsubsection*{Clear Comparison}
+
+\textbf{Claude Code 世界：}
+\begin{verbatim}
+约束 = 文档 + prompt + 你的盯梢
+记忆 = context
+稳定性 = 人工维护
+\end{verbatim}
+
+\textbf{Droid 世界：}
+\begin{verbatim}
+约束 = 系统内生
+记忆 = 状态存储
+稳定性 = 系统保证
+\end{verbatim}
+
+\textbf{终极判断：}Claude Code 的三文件体系，是"把工程纪律显式写出来给 AI 看"；Droid 的设计，是"假设 AI 不可信，于是把纪律写进系统本身"。
+
+\textbf{一句话总结：}在 Claude Code 中，PRD / plan / CLAUDE.md 是长期 context，而非真正的 system prompt；在 Droid 中，这三者不再是文档，而是 agent 系统的内生组成部分。
+
+} % end small

@@ -1,0 +1,288 @@
+% chapter_18.tex
+% Lines 155214 to 164349 of original content
+\small
+
+\section{Sub-Agent 与工程流程}
+
+关于 sub-agent 的详细定义、与 multi-agent 的对比、以及 Claude Code 的 sub-agent 机制，请参见"Multi-Agent 与 Sub-Agent 详解"章节。
+
+在本章中，我们重点关注 sub-agent 在工程实践中的定位。
+
+\subsection{droid 与 Claude Code 的 sub-agent 机制}
+
+\subparagraph{droid 对 sub-agent 的支持}
+
+droid 本身不显式暴露 sub-agent 概念，但用户的使用方式本质上已经在"手动模拟 sub-agent"。在单上下文工作流中，用户通过明确指令（"现在只做 X"、"不要改别的"）实现受控的子任务执行，用完即丢。这在认知模型上就是 sub-agent，只是没有被工具层包装。droid 选择的是"人当 orchestrator，而不是系统当 orchestrator"，这对复杂工程反而更稳。
+
+在 droid 单上下文、spec 驱动、人控节奏的工作方式中，sub-agent 是工具层优化，不是方法论升级，也不是必须品。
+
+\textbf{核心原则：} sub-agent 的意义是减少上下文切换和重复解释，而不是替代判断或 spec。不用它不代表落后，理解它反而更不容易被营销带偏。
+
+\subsection{Git 工作流：feat branch 与 squash merge}
+
+\subsubsection{标准工程流}
+
+手动 branch 一个 feat → implement → 测试没问题 → squash merge。这套流程本质上是"纯工程习惯驱动的 spec-coding"，完全正确，不依赖任何 skills/agent 魔法，是目前最稳、最抗 AI 演进变化的方式。这是标准工程流 + LLM 辅助，而不是"AI 驱动工程"。
+
+\textbf{工程意义：}
+\begin{itemize}
+\item 变更是有边界的
+\item 失败是可回滚的
+\item 主分支永远是干净的
+\end{itemize}
+
+\subsubsection{为什么这套流程在不依赖 agent 时更重要}
+
+当不用自动化 spec/agent 时：
+\begin{itemize}
+\item git 就是状态管理系统
+\item branch 就是 agent 隔离
+\item squash 就是 context 压缩
+\end{itemize}
+
+这是 Git 级别的"sub-agent 隔离"，比很多 multi-agent demo 更可靠。
+
+\subsubsection{squash merge 的工程价值}
+
+squash merge 把试错 prompt、调整、LLM 生成垃圾全部压扁，最终主分支只留下"spec → 实现成功"这一条事实。这非常符合 LLM 不可审计中间思考的现实。
+
+对比 AI agent 流程（agent 自己开分支、自己 commit、人事后 review），feat branch + 人控 merge 在工程上反而更安全。
+
+\textbf{核心原则：} "所有不确定性，都留在分支里；所有确定性，才进 main。"这条原则比任何 skills 都值钱。
+
+spec-coding 不需要花哨工具；branch 是隔离，test 是验证，squash 是记忆压缩。
+
+\subsection{Spec 的生命周期管理}
+
+\subsubsection{spec 在 feat branch 与 main 中的差异}
+
+在所述工作流中，spec 通常只存在于 feat branch 的工作上下文中，不一定、也不必须被 commit 到 main。但这需要精确前提。
+
+\textbf{临时 spec 的本质：} 一次性工程决策说明，而不是 API 合同、架构规范、长期维护文档。这类 spec 用于：
+\begin{itemize}
+\item 思考
+\item 对齐
+\item 驱动实现
+\end{itemize}
+
+不要求持久化，squash 后自然消失。squash merge 的结果是 main 只保留"做成了什么"，而不保留"中间怎么想的"，这是非常成熟的工程选择。
+
+\subsubsection{三种 spec 形态}
+
+\textbf{① 工作态 spec（不进 git）：}
+\begin{itemize}
+\item 形态：本地笔记、Chat/LLM 对话、临时 markdown（不 add）、issue comment/PR description
+\item 特点：不要求持久化，squash 后自然消失
+\end{itemize}
+
+\textbf{② 协作态 spec（进 git，但有生命周期）：}
+\begin{itemize}
+\item 形态：\texttt{docs/wip/feature-x.md}、\texttt{specs/feature-x.md}、\texttt{design/feature-x.md}
+\item 做法：在 feat branch commit、PR 中 review、merge 时，要么一起 squash 进 main，要么在 merge 前删除。是否留下是显式决策。
+\end{itemize}
+
+\textbf{③ 契约态 spec（必须长期存在）：}
+\begin{itemize}
+\item 形态：\texttt{docs/adr/0007-auth-flow.md}、\texttt{docs/api/*.md}、README 更新
+\item 特点：必须进 main，长期维护，是团队"记忆"
+\end{itemize}
+
+\subsubsection{spec 去留判断标准}
+
+判断句："如果半年后我或别人看到 main，只看代码和测试，还需要知道这份 spec 吗？"
+
+✅ 需要 → commit；❌ 不需要 → 不 commit。
+
+\textbf{spec 必须进 main 的情况：}
+\begin{itemize}
+\item 跨 feature、影响未来决策
+\item 对他人是约束
+\item 需要被 review/回溯
+\end{itemize}
+例如：API 设计、数据模型约定、行为边界（edge cases）、业务规则。这时它不再是"临时 spec"，而是设计文档/contract，应该 commit 到 main（如 \texttt{docs/}、\texttt{adr/}）。
+
+\textbf{spec 不需要进 main 的情况：}
+\begin{itemize}
+\item 只为这一次实现服务
+\item 已经通过代码和测试体现
+\item squash 后不再需要
+\end{itemize}
+留在 branch/对话/note 就好。
+
+\subsubsection{未完成 feature 的 spec 处理}
+
+对于未完成的 feature，spec \textbf{必须}存在于：
+\begin{itemize}
+\item PR 描述
+\item issue
+\item wip doc
+\end{itemize}
+
+而不是只存在于已 squash 掉的 branch，否则就是把项目状态藏进了历史里（反模式）。
+
+\textbf{"两问法"决定 spec 去向：}
+\begin{enumerate}
+\item 这个 spec 对"feature 完成后"还有用吗？
+\item 如果我明天请假，别人需要它吗？
+\end{enumerate}
+两个都否 → 不 commit/删除；任一为是 → commit 到 main（或 issue/PR）。
+
+\subsubsection{spec 与 LLM-assisted coding 的关系}
+
+LLM 的"中间 reasoning"不可审计，spec 里往往包含假设、试错、被推翻的方案。保留这些反而会污染长期认知。squash merge + 丢弃临时 spec，是在主动做"认知垃圾回收"。
+
+临时 spec 是工作记忆，main 只保留长期记忆；squash merge 的意义不仅是压缩 commit，也是压缩思考噪音。
+
+\subsection{Architecture Decision Record (ADR)}
+
+\subsubsection{ADR 定义}
+
+ADR = Architecture Decision Record，用来记录"为什么我们在架构上做了这个决定"的文档。它解决的不是"怎么写代码"，而是：
+\begin{itemize}
+\item 我们当时在多个方案中，为什么选了这一种
+\item 哪些选择是被明确否掉的
+\item 这个决定对未来有什么约束
+\end{itemize}
+
+\subsubsection{ADR 与其他文档的区别}
+
+\begin{tabular}{ll}
+\textbf{文档} & \textbf{关注点} \\
+README & 项目是什么，怎么用 \\
+spec & 功能行为是什么 \\
+design doc & 怎么实现 \\
+ADR & 为什么这么设计 \\
+\end{tabular}
+
+ADR 是"不可见的工程记忆"。
+
+\subsubsection{ADR 的核心结构}
+
+典型 ADR 回答四件事：
+\begin{enumerate}
+\item \textbf{Context（背景）：} 发生了什么问题？为什么要做决定？
+\item \textbf{Decision（决定）：} 我们选了什么方案？
+\item \textbf{Alternatives（备选）：} 还考虑过哪些方案？为什么没选？
+\item \textbf{Consequences（后果）：} 这个决定带来的好处和代价是什么？
+\end{enumerate}
+
+\textbf{示例：} \texttt{docs/adr/0005-use-postgres-for-events.md}
+\begin{verbatim}
+# ADR 0005: Use PostgreSQL for Event Storage
+
+## Context
+We need durable event storage with transactional guarantees.
+
+## Decision
+We will use PostgreSQL instead of DynamoDB.
+
+## Alternatives
+- DynamoDB: rejected due to lack of multi-row transactions.
+- Kafka: rejected due to operational overhead.
+
+## Consequences
+- Strong consistency
+- Higher operational cost
+\end{verbatim}
+
+短、明确、可长期保留。
+
+\subsubsection{ADR 原则与 AI 时代的意义}
+
+\textbf{工程实践原则：}
+\begin{itemize}
+\item 一条 ADR = 一个决定
+\item 决定一旦生效，不随代码随意修改
+\item 如果反悔 → 写新的 ADR（supersedes）
+\end{itemize}
+
+在 AI 时代，ADR 更重要，因为：
+\begin{itemize}
+\item AI 看不到当初的讨论
+\item AI 容易重提已被否定的方案
+\item 人类也会忘
+\end{itemize}
+
+ADR 的作用是阻止未来的人（包括 AI）重复走歪路。ADR 不是为了写给别人看的，而是为了防止未来的你、同事、以及 AI 重复犯已经付过代价的错误。
+
+在 spec/agent/git 体系中：
+\begin{itemize}
+\item \texttt{.specify/}：AI 工作记忆
+\item \texttt{docs/wip/}：协作 spec
+\item \texttt{docs/adr/}：最终解释权
+\end{itemize}
+
+ADR 是 AI 不能越权的"宪法条款"。
+
+\subsection{工程目录边界}
+
+\subsubsection{开发工具目录的本质}
+
+\textbf{.idea/}（JetBrains IDE）：工程结构、运行配置、个人快捷键。IDE 私有、高度个人化，通常不 commit，不能当 spec/文档。
+
+\textbf{.vscode/}（VS Code）：settings.json、launch.json、extensions 推荐。个人设置不 commit，团队约定（少量）可 commit（如 formatter），可选但要克制。
+
+\textbf{.cursor/}（Cursor AI 编辑器）：AI 行为配置、prompt 模板、会话状态。本质和 \texttt{.specify/} 一样，是 AI 工具的私有工作区，不应该被当作工程事实，不适合作为长期记忆。
+
+\textbf{.venv/}（Python 虚拟环境）：第三方库、解释器副本。本地运行环境、可再生，永远不 commit，用 \texttt{requirements.txt}/\texttt{pyproject.toml} 描述即可。
+
+\subsubsection{共同特征}
+
+这些目录的共同点：可再生、不可审计、不应成为"项目真相"。
+
+\textbf{工程判断公式：} "如果我换 IDE/换 AI/换机器，这个东西还应该存在吗？"
+✅ 是 → 应该进 repo（docs/code/adr）；❌ 否 → 工具状态（ignore）。
+
+代码和文档是项目的身体，\texttt{.idea}/\texttt{.cursor}/\texttt{.venv} 只是工具的影子；影子会变，身体必须稳定。
+
+\subsection{Droid Coding 中的文档策略}
+
+\subsubsection{不需要为了 AI 而刻意维持文档}
+
+在 droid coding 过程中，不需要"为了用 AI"而刻意维持 ADR 或 WIP spec，只需要在"工程本身需要它们"的时候才写。AI 不会要求升级工程复杂度。
+
+\textbf{ADR/WIP spec 的唯一正当理由：} 人类需要、团队需要、未来需要。而不是"AI 最佳实践"、"别人都在用"、"不写就落后"。
+
+\subsubsection{完全不需要 ADR/WIP spec 的情况}
+
+\begin{itemize}
+\item \textbf{单人项目/小项目：} 唯一维护者、变更半天内完成、上下文都在脑中。不写是更高效的工程决策。
+\item \textbf{feature 局部、无长期影响：} 不影响架构、不引入新概念、不改变数据模型。让代码和测试说话就够了。
+\item \textbf{droid coding 的"短反馈循环"：} 快速试、快速改、squash 掉。ADR 反而是噪音。
+\end{itemize}
+
+\subsubsection{应该写 WIP spec 的情况}
+
+满足以下任意一条：
+\begin{itemize}
+\item feature 超过 1-2 天
+\item 需要停下来明天继续
+\item 反复跟 AI 解释同一件事
+\item 有人可能中途接手
+\end{itemize}
+
+写一个极简 WIP spec，不超过一页：
+\begin{verbatim}
+# Feature X – WIP
+- Goal: ...
+- Non-goals: ...
+- Open questions:
+  - ...
+\end{verbatim}
+
+\subsubsection{必须写 ADR 的情况}
+
+只在这些情况下写 ADR：
+\begin{itemize}
+\item 做了不可逆或高成本决策
+\item 明确否掉了一些看似合理的方案
+\item 这个决定未来会被反复质疑
+\end{itemize}
+
+这是给未来人（包括自己）用的，不是给 AI。
+
+\subsubsection{防焦虑原则}
+
+任何"为了 AI 而引入的工程流程"，如果不能明显帮助人类，就应该被拒绝。
+
+ADR 和 WIP spec 是"工程需要时才打开的工具"，不是 droid coding 的前置条件。完全可以继续写代码，而不欠任何"文档债"。

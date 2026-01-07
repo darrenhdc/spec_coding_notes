@@ -1,0 +1,242 @@
+\small
+
+\section*{Chapter 15: Spec-Driven 工作流与 Git 实践}
+
+\subsection*{15.1 Pull Request 的本质与定位}
+
+\subsubsection*{PR 的定义}
+
+Pull Request = 代码合并请求。在 Git 工作流中，PR 是将 feature 分支的变更合并到目标分支（通常是 main）的正式机制。PR 不仅包含代码差异（diff），还关联了上下文信息：spec、plan、tasks、commit 历史。
+
+\subsubsection*{PR 在 Spec-Driven 中的角色}
+
+在 spec-driven 开发中，PR 承载三重功能：
+
+\textbf{(1) 代码审查载体}：Review 者通过 PR 查看 spec 定义与实际实现的对应关系，验证是否按 spec 执行。
+
+\textbf{(2) 决策边界}：PR 是"是否接受此 feature 进入主线"的人类决策点。AI 可以执行 implement，但无法决定"这段代码是否值得进 main"。
+
+\textbf{(3) 历史记录单元}：PR 合并后，其 title、description、讨论内容成为永久可追溯的工程文档。
+
+\subsubsection*{PR 与 Spec 的关系}
+
+Spec 文件（.specify/specs/XXX/spec.md）与代码在同一 feature 分支中创建和提交。PR 打开时，spec 已作为 commit 的一部分存在。Review 者在 PR 中同时看到：spec 内容（为什么这么做）+ 代码变更（怎么做的）+ 测试结果（是否有效）。
+
+\subsection*{15.2 Spec-Driven 工作流的四个阶段}
+
+\subsubsection*{阶段 1：Spec / Plan / Tasks（决策阶段）}
+
+位置：feat/* 分支
+
+操作：定义需求、约束实现路径、拆解任务
+
+状态：可反复修改、不产生代码、仅存在规划文档
+
+\subsubsection*{阶段 2：/speckit.implement（执行阶段）}
+
+位置：同一 feat/* 分支
+
+AI 被允许：按 tasks 写代码、创建/修改文件
+
+AI \textbf{不被允许}：commit、merge、push
+
+结果：代码仅存在于 working tree，未进入 Git 历史
+
+\subsubsection*{阶段 3：人类 Review（控制阶段）}
+
+操作：执行 \texttt{git diff} 查看 spec、plan、tasks 与 code diff
+
+决策：接受 / 拒绝 / 修改 spec 后重新 implement
+
+此阶段是 spec-driven 的核心安全闸门。
+
+\subsubsection*{阶段 4：Merge（生效阶段）}
+
+操作：手动 \texttt{git merge} 或点击 PR merge 按钮
+
+这是唯一影响 main 分支的时刻，必须由人类触发。
+
+\subsection*{15.3 关键设计原则：执行与生效的分离}
+
+\subsubsection*{为什么 implement 不自动 commit？}
+
+Commit 是"责任边界"，不能由 AI 自动跨越。原因：
+
+\textbf{(1)} Commit 代表对历史节点的认可：哪些文件算完成、commit message 怎么写、是一个 commit 还是多个——这些都是工程判断，非执行判断。
+
+\textbf{(2)} Commit 是 review 之后的动作，非 implement 的一部分。正确顺序：implement $\rightarrow$ review $\rightarrow$ commit。若 implement 自动 commit，review 变成事后补救，历史会被污染。
+
+\subsubsection*{为什么 spec 同意不自动 merge？}
+
+AI 可以执行，但不能决定"什么时候对世界负责"。在工程中：commit = 对历史负责、merge = 对主线负责、release = 对用户负责。这些责任点不能自动化。
+
+用户同意 spec 的真实含义是："我授权 AI 按此计划尝试实现，但结果是否可接受，仍由我决定。"而非："我同意这段代码直接进 main。"
+
+\subsection*{15.4 Commit 策略：从防丢存档到决策节点}
+
+\subsubsection*{Spec-Driven 下 Commit 的角色变化}
+
+传统 vibe coding：高频、碎片化 commit，作用是"防丢代码"。
+
+Spec-driven：低频、语义化 commit，作用是"标记决策节点"。
+
+\subsubsection*{Feat 分支仍需人工 Commit}
+
+原因：(1) commit 是 review 的最小单位；(2) commit 控制"回滚粒度"；(3) merge 的前提是 commit（merge 的对象是 commit，非工作区）。
+
+\subsubsection*{推荐 Commit 原则}
+
+\textbf{1} 决策变成现实 $\rightarrow$ commit
+
+\textbf{2} 一个 commit = 一个"可解释状态"
+
+\textbf{3} commit 不是越多越好，而是越"语义完整"越好
+
+\textbf{4} 判断口诀："如果现在让我向别人解释当前状态，我是否有一句话能概括？"有则 commit，无则等待。
+
+\subsubsection*{健康的 Commit 节奏示例}
+
+\begin{verbatim}
+feat/todo-cli 分支：
+
+commit 1: docs(todo): finalize spec and plan
+commit 2: feat(todo): implement todo CLI
+\end{verbatim}
+
+spec/plan 单独 commit，implement 是一个或少量 commit，中间不频繁碎 commit。
+
+\subsection*{15.5 .specify/ 目录的 Git 生命周期}
+
+\subsubsection*{核心原则}
+
+.specify/ 与代码在 Git 里是同一等级。Git 眼里只有"哪些文件在 commit 里"，对 .specify/specs/001-xxx/spec.md 与 src/foo.ts 一视同仁。
+
+\subsubsection*{Spec 进入 Main 的时机}
+
+.specify/ 并非"自动等到 merge 才进入 main"，而是：始终存在于 feat 分支；是否进入 main，完全取决于 merge 时是否保留它。没有任何"延迟进入 main"的特殊机制。
+
+\subsubsection*{推荐模式：Spec 跟 Feature 一起 Merge}
+
+\begin{verbatim}
+feat/xxx branch:
+  - commit A: docs: add spec/plan/tasks
+  - commit B: feat: implement xxx
+
+merge → main
+
+结果：main 包含代码 + .specify/specs/001-xxx/
+\end{verbatim}
+
+这是 spec-driven 的"完整形态"：feature 的"做什么"和"为什么"都被永久记录在 main 历史中。
+
+\subsubsection*{其他模式}
+
+\textbf{Squash merge}：.specify/ 是否进入 main 取决于 squash 的 commit 里是否包含它。若 squash 时只选代码或手动删 .specify/，则不会进 main——这是人的选择，非工具规则。
+
+\textbf{删除 spec（不推荐）}：有些团队在 feature 完成后删除 .specify/ 再 merge。技术上合法，但工程上是损失：删除了决策依据、设计上下文、未来重构的参考。
+
+\subsubsection*{分支删除与文件保留}
+
+\begin{verbatim}
+feat branch: .specify/ + src/
+
+↓ merge
+
+main: .specify/ + src/
+
+↓ delete feat branch
+
+main: .specify/ + src/  （仍存在）
+\end{verbatim}
+
+删除分支 $\neq$ 删除文件。只要文件被 commit 且 commit 被 merge，文件就进入了 main。
+
+\subsection*{15.6 Squash：压扁 Commit 的艺术}
+
+\subsubsection*{定义}
+
+Squash = 把多个 commit"压扁"为一个 commit。
+
+\begin{verbatim}
+squash 前：
+  commit A: add spec
+  commit B: fix typo
+  commit C: implement feature
+  commit D: fix bug
+
+squash 后：
+  commit X: implement feature with spec
+\end{verbatim}
+
+\subsubsection*{Squash 的目的}
+
+不 squash 的问题：main 上充满"fix typo"、"wip"等噪音，历史难读。
+
+Squash 的目的：main 只保留"做了什么"，而非"我中间怎么折腾的"。这是对"主线历史可读性"的优化手段。
+
+\subsubsection*{Squash 与 Spec-Driven 的关系}
+
+在 spec-driven 中，squash 非常常见甚至推荐。因为 spec/plan 已记录过程，main 更适合只保留：spec 定义 + 最终实现。
+
+健康的结果：
+\begin{verbatim}
+commit X:
+  docs(todo): spec + plan + tasks
+  feat(todo): implement todo CLI
+\end{verbatim}
+
+或干脆：
+\begin{verbatim}
+commit X: feat(todo): implement todo CLI (per spec)
+\end{verbatim}
+
+\subsubsection*{Squash $\neq$ 删除历史}
+
+原 commit 仍在 feat 分支和 reflog 中，只是不进入 main。Squash 是"选择性公开历史"，非抹除历史。
+
+\subsubsection*{何时不用 Squash}
+
+不适合 squash 的情况：release/hotfix 分支、需要精确 bisect 的历史、每个 commit 都是稳定点。
+
+判断口诀："main 要不要看懂你怎么一步步写的？"不需要则 squash，需要则不 squash。
+
+\subsubsection*{操作方式}
+
+本地：\texttt{git rebase -i main}，把多个 commit 标记为 squash。
+
+团队：99\% 情况直接用 PR 的"Squash and merge"按钮。
+
+\subsubsection*{本质}
+
+Squash 的本质：把"开发过程"留在 feature 分支，把"工程结果"放进 main。
+
+\subsection*{15.7 推荐工作流总结}
+
+\subsubsection*{绝对安全的工作流}
+
+\begin{verbatim}
+feat branch:
+  ✅ spec / plan / tasks（commit）
+  ✅ /speckit.implement
+  ✅ review（git diff / PR）
+  ✅ commit implementation
+  ✅ open PR
+  ✅ merge
+
+main:
+  ✅ 只接受 review 通过的结果
+\end{verbatim}
+
+在此流程中：没有任何"自动 merge"步骤；每个不可逆动作前都有人工确认。
+
+\subsubsection*{核心心智模型}
+
+/speckit.implement = "一个严格按 spec 干活、但没有提交权限的工程师。"
+
+你是：唯一能 commit 的人、唯一能 merge 的人。
+
+\subsubsection*{定锚原则}
+
+spec-driven 的自动化只覆盖"执行"，"是否生效"永远是人类的权力。Commit 和 merge 永远是显式的人类动作。
+
+.specify/ 始终存在于 feature 分支；是否进入 main，完全由 merge 决定；merge 的不是"分支"，而是"提交过的设计与实现"。

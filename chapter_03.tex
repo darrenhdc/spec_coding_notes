@@ -1,0 +1,425 @@
+\chapter{Spec Coding 实战与工程深化}
+
+\small
+
+\section{LSP-first 开发范式}
+
+\subsection{LSP 的核心价值}
+
+LSP（Language Server Protocol）在 AI 辅助开发中的价值不仅是"代码补全"，而是建立了一个稳定的工具层。LSP-first 开发意味着：
+
+\begin{itemize}
+  \item \textbf{语义稳定性}：通过 LSP 获取准确的定义、引用、类型信息
+  \item \textbf{工具解耦}：不依赖特定 IDE 的黑盒功能
+  \item \textbf{可审计性}：每个操作都有明确的语义来源
+\end{itemize}
+
+\subsection{LSP-first Prompt 模板}
+
+\begin{verbatim}
+使用 LSP 工具查询以下信息：
+1. 获取当前光标位置的定义 (goToDefinition)
+2. 查找所有引用点 (findReferences)
+3. 显示文档和类型信息 (hover)
+基于 LSP 返回的准确语义，分析代码结构并给出建议。
+\end{verbatim}
+
+\section{Claude Code 文档体系深度解析}
+
+\subsection{PRD / plan / CLAUDE.md 的层级关系}
+
+\textbf{PRD.md}（产品需求文档）：
+\begin{itemize}
+  \item 定义"做什么"和"为什么做"
+  \item 作为参考上下文加载，非 system prompt
+  \item 描述产品目标、用户需求、功能范围
+\end{itemize}
+
+\textbf{plan.md}（实施计划）：
+\begin{itemize}
+  \item 定义"怎么做"的技术方案
+  \item 同样作为参考材料
+  \item 包含架构设计、技术选型、实施步骤
+\end{itemize}
+
+\textbf{CLAUDE.md}（项目约束规则）：
+\begin{itemize}
+  \item 优先级最高，接近"会话级 system context"
+  \item 定义不可违反的行为约束
+  \item 包含编码规范、安全要求、项目特定规则
+\end{itemize}
+
+\subsection{文档遗忘问题与应对策略}
+
+Claude Code 的三文件体系存在以下局限：
+
+\begin{enumerate}
+  \item \textbf{跨会话遗忘}：关闭后重新打开，需要重新加载
+  \item \textbf{上下文溢出}：新对话会挤压旧信息
+  \item \textbf{实现 drift}：agent 以当前代码为事实源，而非文档
+\end{enumerate}
+
+\textbf{应对策略}：
+\begin{enumerate}
+  \item \textbf{锚点最小化}：只保留 5-10 条必须不变的硬约束
+  \item \textbf{提升到 CLAUDE.md}：绝对不能违反的行为规则
+  \item \textbf{Re-anchor Prompt}：关键修改前强制重新阅读文档
+  \item \textbf{阶段化 plan}：只保留当前阶段的计划
+\end{enumerate}
+
+\section{Drift 与 Hallucination 机制}
+
+\subsection{Drift 的本质}
+
+Drift 是 LLM 在长期交互中逐渐偏离初始意图的现象：
+
+\begin{itemize}
+  \item \textbf{语义漂移}：对同一概念的理解逐渐变化
+  \item \textbf{约束松弛}：初期遵守的规则逐渐被忽略
+  \item \textbf{上下文污染}：早期决策被后期信息覆盖
+\end{itemize}
+
+\subsection{Drift 产生的机制}
+
+\begin{enumerate}
+  \item \textbf{上下文窗口有限}：新信息挤压旧信息
+  \item \textbf{概率性生成}：每次生成都是重新采样，存在随机性
+  \item \textbf{缺乏显式锚点}：没有强制性的真值源
+\end{enumerate}
+
+\subsection{防止 Drift 的方法}
+
+\begin{enumerate}
+  \item \textbf{显式锚点}：用 CLAUDE.md 定义不可违反的约束
+  \item \textbf{定期 Re-anchor}：在关键节点重新加载核心文档
+  \item \textbf{版本化 spec}：让决策有明确的"真相时刻"
+  \item \textbf{分离对话与执行}：决策阶段和执行阶段分开
+\end{enumerate}
+
+\section{Droid 系统架构}
+
+\subsection{Droid 与 Claude Code 的根本差异}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{文件} & \textbf{Claude Code} & \textbf{Droid} \\
+\hline
+PRD.md & 参考材料 & 系统真理（Authoritative State） \\
+plan.md & 设计说明 & 可执行结构（Execution Graph） \\
+CLAUDE.md & 说明文件 & Agent 宪法（Policy Layer） \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Droid 的核心假设}
+
+Droid 的设计假设是"agent 默认不可信"：
+
+\begin{itemize}
+  \item spec 拥有系统级否决权
+  \item plan 是执行约束，而非建议
+  \item agent 行为规则是系统的一部分，不可随意覆盖
+\end{itemize}
+
+\subsection{Drift 防护机制}
+
+Droid 通过以下机制防止 drift：
+
+\begin{enumerate}
+  \item \textbf{System-level enforcement}：spec 在系统层面强制执行
+  \item \textbf{Explicit state tracking}：维护显式的 spec state
+  \item \textbf{Reference obligation}：任何实现必须引用 spec 条目
+  \item \textbf{Conflict detection}：显式检测和处理冲突
+\end{enumerate}
+
+\section{Spec-kit 工具链}
+
+\subsection{spec-kit 的本质}
+
+spec-kit 不是"让 Claude 更聪明"，而是把靠自觉维护的 PRD/plan/CLAUDE.md 流程，变成：
+
+\begin{itemize}
+  \item \textbf{可执行}：spec 可被机器解析和验证
+  \item \textbf{可审计}：每个改动都能追溯到 spec
+  \item \textbf{可持续}：建立长期的工程记忆
+\end{itemize}
+
+\subsection{spec-kit 与手写文档的对比}
+
+\textbf{spec-kit + Claude Code}：
+\begin{itemize}
+  \item 强制 artifact 链条（不能跳步）
+  \item 明确"哪一步可以问不确定问题"
+  \item spec/plan/tasks 都是机器可解析的
+\end{itemize}
+
+\textbf{手写文档}：
+\begin{itemize}
+  \item 完全可控
+  \item 高度贴合个人习惯
+  \item 容易出现 drift、不一致
+\end{itemize}
+
+\subsection{spec-kit 实战流程}
+
+\begin{enumerate}
+  \item \texttt{specify init . --ai claude}：初始化项目
+  \item \texttt{/speckit.constitution}：写项目宪法
+  \item \texttt{/speckit.specify}：写功能 spec
+  \item \texttt{/speckit.plan}：生成技术方案
+  \item \texttt{/speckit.tasks}：生成任务拆分
+  \item \texttt{/speckit.implement}：让 Claude 写代码
+\end{enumerate}
+
+\section{Git 工作流与 Spec}
+
+\subsection{Feature = Git 分支约定}
+
+"Feature = Git 分支"是被广泛采用的工程约定：
+
+\begin{itemize}
+  \item 最简单的隔离单位
+  \item 天然的回滚边界
+  \item 与 PR/Review 完美对齐
+  \item 与 spec-driven 极度契合
+\end{itemize}
+
+\subsection{Pull Request 的本质}
+
+PR 不是 Git 概念，而是协作平台的"变更提议机制"：
+
+\begin{itemize}
+  \item 提供意图边界："这次改动想干嘛"
+  \item 提供讨论空间：对话不污染 commit 历史
+  \item 提供安全闸门：review 后才 merge
+\end{itemize}
+
+\subsection{Merge 策略对比}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{策略} & \textbf{feature 内 commit} & \textbf{main 上 commit} \\
+\hline
+普通 merge & 原样保留 & 原样保留 \\
+squash merge & 保留在 feat & 不进入 main \\
+rebase + FF & 改写后保留 & 线性进入 main \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{推荐}：在 spec-driven 工作流中，squash merge 是最常见、最稳妥的选择。
+
+\subsection{Squash 的本质}
+
+Squash = 把多个 commit "压扁"为一个 commit。其目的是：
+
+\begin{itemize}
+  \item main 只保留"做了什么"
+  \item 不保留"中间怎么折腾的"
+  \item 历史被整理过，只留下对外可读的结果
+\end{itemize}
+
+\section{spec / plan / tasks 与 Git 分支的对应关系}
+
+\subsection{核心对应表}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lllll}
+\hline
+\textbf{层级} & \textbf{文件} & \textbf{位置} & \textbf{语义归属} & \textbf{Git 分支} \\
+\hline
+spec & spec.md & .specify/specs/xxx/ & Feature & feat/\emph{} 分支 \\
+plan & plan.md & .specify/specs/xxx/ & Feature & feat/\emph{} 分支 \\
+tasks & tasks.md & .specify/specs/xxx/ & Feature & feat/\emph{} 分支 \\
+code & src/... & 项目源码目录 & Feature & feat/\emph{} 分支 \\
+constitution & constitution.md & .specify/memory/ & 项目 & 所有分支共享 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{时间轴视角}
+
+\begin{verbatim}
+(main)
+│
+├── git checkout -b feat/todo-cli
+│
+(feat/todo-cli)
+│
+├── spec.md      ← 决策：要做什么
+├── plan.md      ← 决策：怎么做
+├── tasks.md     ← 决策：分几步做
+│
+├── /speckit.implement
+│
+├── code changes ← 执行结果
+│
+├── PR review    ← 验证：是否按 spec
+│
+└── merge → main
+\end{verbatim}
+
+\subsection{implement 和 merge 的关系}
+
+\textbf{关键事实}：
+\begin{itemize}
+  \item \texttt{/speckit.implement} 不会自动 commit
+  \item implement 和 merge 不是原子操作
+  \item merge 永远是人类的权力边界
+\end{itemize}
+
+\textbf{推荐节奏}：
+\begin{enumerate}
+  \item spec/plan/tasks 完成后 commit
+  \item implement 执行
+  \item review（git diff / PR）
+  \item 满意后 commit implementation
+  \item merge（squash 推荐）
+\end{enumerate}
+
+\section{Spec 的三种形态}
+
+\subsection{形态分类}
+
+\textbf{工作态 spec}（不进 git）：
+\begin{itemize}
+  \item 本地笔记、对话、临时 markdown
+  \item 用于思考、对齐、驱动实现
+  \item 不要求持久化，squash 后自然消失
+\end{itemize}
+
+\textbf{协作态 spec}（进 git，有生命周期）：
+\begin{itemize}
+  \item docs/wip/、specs/、design/ 目录
+  \item PR 中 review，merge 时决定是否留下
+\end{itemize}
+
+\textbf{契约态 spec}（必须长期存在）：
+\begin{itemize}
+  \item docs/adr/、docs/api/、README
+  \item 必须进 main，长期维护，是团队记忆
+\end{itemize}
+
+\subsection{判断准则}
+
+"两问法"决定 spec 去向：
+\begin{enumerate}
+  \item 这个 spec 对"feature 完成后"还有用吗？
+  \item 如果我明天请假，别人需要它吗？
+\end{enumerate}
+
+\begin{itemize}
+  \item 两个都否 → 不 commit / 删除
+  \item 任一是 → commit 到 main（或 issue/PR）
+\end{itemize}
+
+\section{Rebase 的本质}
+
+\subsection{机制说明}
+
+Git rebase = 把"我这一串 commit"从"旧的 base"重新接到"新的 base"上。
+
+\begin{verbatim}
+原始状态：
+  main:  A ── B ── C
+           \
+  feat:           D ── E
+
+rebase 后：
+  main:  A ── B ── C
+           \
+  feat:               D' ── E'
+\end{verbatim}
+
+\subsection{与 Stash 的关系}
+
+stash 是"可选的前置操作"，不是 rebase 的一部分：
+\begin{itemize}
+  \item 工作区干净 → 直接 rebase
+  \item 有未提交修改 → Git 会拒绝
+  \item 所以：git stash → git rebase → git stash pop
+\end{itemize}
+
+\subsection{适用时机}
+
+\begin{itemize}
+  \item[\textbf{✅}] 只在自己的 feature 分支上
+  \item[\textbf{✅}] 提交还没被别人依赖时
+  \item[\textbf{❌}] 不要在 main/已共享分支上 rebase
+\end{itemize}
+
+\section{.specify/ 目录定位}
+
+\subsection{本质澄清}
+
+.specify/ 的本质是：LLM 的工作目录/私有工具状态/临时输入输出。
+
+它更像 .idea/、.vscode/、.cursor/：
+\begin{itemize}
+  \item ❌ 不稳定
+  \item ❌ 工具相关
+  \item ❌ 不保证长期语义
+  \item ✅ 可随工具版本变化
+\end{itemize}
+
+\subsection{正确位置}
+
+\begin{itemize}
+  \item 工具私有状态 → .specify/、.claude/
+  \item 临时工作 spec → 不进 git、对话、note
+  \item 协作态 spec → docs/wip/、specs/（PR 时决定去留）
+  \item 契约态 spec → docs/adr/、docs/api/、必须进 main
+\end{itemize}
+
+\section{Claude Skills 的本质}
+
+\subsection{Skills 的本质}
+
+所谓的"Claude skills"本质是：
+\begin{itemize}
+  \item 一组固定的 prompt 模板
+  \item 一些 if/when/condition
+  \item 一些行为约束
+  \item 一点"人类写的经验总结"
+\end{itemize}
+
+\subsection{Skills 的不可靠性}
+
+\begin{enumerate}
+  \item \textbf{没有稳定接口}：模型一升级，行为就可能变化
+  \item \textbf{经验叠加}：是"我觉得这样好"，不是明确契约
+  \item \textbf{不可迁移}：博主的项目背景与你的完全不同
+  \item \textbf{营销载体}：制造信息差、暗示稀缺、承诺捷径
+\end{enumerate}
+
+\subsection{Spec-driven 与 Skills 的关系}
+
+在 spec-driven 工作流中：
+\begin{itemize}
+  \item spec / plan / tasks 已经记录了决策
+  \item 不需要靠"skills 猜"
+  \item 模型最擅长明确任务、明确约束
+  \item 最不擅长模糊经验、玄学规则
+\end{itemize}
+
+\section{工程实践总结}
+
+\subsection{Spec Coding 的核心原则}
+
+\begin{enumerate}
+  \item 不迷信 skills、不迷信 agent
+  \item spec 只服务确定性
+  \item git 是最终事实源
+  \item 所有不确定性留在分支，所有确定性进 main
+\end{enumerate}
+
+\subsection{终极心法}
+
+临时 spec 是工作记忆，main 只保留长期记忆；squash merge 的意义，不仅是压缩 commit，也是压缩思考噪音。
+
+\textbf{安全原则}："所有不确定性，都留在分支里；所有确定性，才进 main。"

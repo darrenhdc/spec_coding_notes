@@ -1,0 +1,313 @@
+% chapter_07.tex - Refactored
+{\small
+\chapter{Memory 管理与 Spec Coding 范式}
+
+\section{Memory 管理与上下文管理}
+
+\subsection{概念辨析：Context vs Memory vs Spec}
+
+\subsubsection{核心结论}
+
+Memory 管理 $\neq$ 上下文管理。上下文是短期注意力窗口，Memory 是长期可控工程资产。
+
+在 Claude Code 中：上下文不可见、不可控、易漂移；Memory 必须由你显式外置，才能稳定、可审计、可继承。
+
+\subsubsection{三个易混淆概念}
+
+\paragraph{Context（上下文）}
+
+当前模型能"看到"的所有 token，包括对话历史、系统提示、/compact 摘要。特点：不可查看、不可版本化、不可靠，仅适合短期推理。Context 是"工作记忆"，不是资产。
+
+\paragraph{Memory（记忆）}
+
+你希望模型长期、不漂移记住的东西。特点：必须显式存在（文件/DB）、可编辑、可 diff、可回滚。Memory 是"工程真理的一部分"。
+
+\paragraph{Spec（规范）}
+
+Memory 的"强约束子集"，用来定义不变量、边界条件、行为契约。Spec = 高强度 Memory。
+
+\subsubsection{上下文管理的局限}
+
+你只能做三件事：控制对话长度、合理使用 /compact、频繁做理解验证。你无法真正管理 context。
+
+Memory 管理你能做的：定义结构、持久化、明确优先级、强制 agent 读取。这是你能真正掌控的部分。
+
+\subsection{Claude Code 的可行 Memory 管理体系}
+
+\subsubsection{分层 Memory 结构}
+
+最小可行方案：
+
+\begin{verbatim}
+/docs
+ ├── SPEC.md            ← 不变量 / 合同（极少改，高门槛）
+ ├── ARCH.md            ← 架构决策（记录结构选择）
+ ├── CURRENT_STATE.md   ← 当前阶段状态（高频改，/compact 后必读）
+ └── DECISIONS.md       ← 为什么这么做（防止反复争论）
+\end{verbatim}
+
+\subsubsection{Memory 优先级}
+
+每次新对话或 /compact 后，明确告诉 Claude：当对话历史、直觉判断与 docs/ 中的内容冲突时，以 SPEC.md $\rightarrow$ ARCH.md $\rightarrow$ CURRENT\_STATE.md 的顺序为准。这是人为注入 spec-coding 语义。
+
+\subsubsection{Memory 作为显式输入}
+
+不要说"你应该记得我们之前说过......"，要说"请先读取 docs/CURRENT\_STATE.md 和 docs/SPEC.md，再继续"。Memory 必须被当成显式输入。
+
+\subsubsection{/compact 的真实角色}
+
+/compact $\neq$ Memory 管理工具。它的作用：清空短期噪音、释放上下文、强迫你把该留下的东西写进 Memory。
+
+好用法：Memory 固化 $\rightarrow$ /compact $\rightarrow$ 继续。坏用法：全靠对话 $\rightarrow$ /compact $\rightarrow$ 迷失。
+
+\subsection{判断标准}
+
+问自己：如果我现在换一个模型，只给它 docs/ 目录，它能继续干活吗？能则 Memory 管理合格，不能则你在靠 context 硬撑。
+
+Droid / Kiro 看起来"更高级"的原因：它们把你现在手动做的 Memory 管理结构化、自动化，赋权给 agent。
+
+\subsubsection{终极总结}
+
+上下文是模型的短期注意力，Memory 是工程的长期真理；真正的 AI 编程能力，不是"管理 context"，而是"设计 Memory"。
+
+\section{Droid 的 /compact 问题}
+
+\subsection{Droid 是否需要 /compact}
+
+在真正的 spec-coding agent（如 Droid）里，基本不需要、也不会暴露给用户一个 /compact 这样的命令。原因不是"没做"，而是它解决问题的方式已经不同了。
+
+\subsection{Claude Code 需要 /compact 的前提}
+
+在 Claude Code 中：context = 唯一工作记忆，不可见、不可控，长对话必然爆 token/漂移，因此需要 /compact 把历史"压成摘要"给模型续命。/compact 本质是"在 context-only 世界里的垃圾回收器"。
+
+\subsection{Droid 的不同前提}
+
+Droid 的核心设计：Agent = 持续读取/修改/校验外部 spec，而不是只靠 context 推理。Spec 是持久的、可 diff 的、可回滚的。Agent 的推理入口是 spec + 当前任务，而不是长对话历史。Droid 把"长期记忆"彻底外包给 spec 系统了。
+
+\subsection{为什么 Droid 不需要 /compact}
+
+\paragraph{不靠对话历史当 memory}
+
+在 Droid 中，对话是 UI、是交互手段，不是系统真理。没有"长对话 = 负担"这个问题，也就不需要手动压缩。
+
+\paragraph{内部压缩是自动、结构化、不可见的}
+
+Claude Code 的 /compact 压缩自然语言对话；Droid 内部做的是结构化状态裁剪，如只保留 spec diff、丢弃已失效的中间 reasoning。这些是自动发生、不需要用户操心、不会影响 spec 真理的。这是 agent 层的 state management，不是对话层的 compact。
+
+\paragraph{/compact 会破坏 spec-coding 语义}
+
+如果 Droid 允许用户说 /compact，那等于在暗示"对话历史还是重要真理的一部分"，这在 spec-coding 世界里是语义错误。Droid 的哲学：你要清理的不是对话，而是 spec 的演化路径，而这必须有 diff、有审计、有回滚。
+
+\subsection{认知跃迁}
+
+当你还在问"要不要 /compact"时，你还在 context-centric 的世界；当系统不再需要 /compact，说明它已经转向 spec-centric。Claude Code 需要你"手动管理记忆"，Droid 把记忆管理升级为工程系统。
+
+\subsection{终极总结}
+
+/compact 是 context-only 工具的补丁；真正的 spec-coding agent（如 Droid）通过外置、可维护的 spec，从根本上消灭了 /compact 存在的必要性。
+
+\section{Spec 的连续性与账号切换}
+
+\subsection{Spec 不会"断层"的条件}
+
+Spec 是否会"断层"，不取决于你换不换 Droid 账户，而取决于 spec 的"真理载体"在哪里。Spec 在项目仓库/组织级存储则不会断层，Spec 只存在于账号私有空间则会断层。
+
+\subsection{Droid 中的真实情况}
+
+\paragraph{情况 1：Spec 绑定在项目/Repo/Org（推荐 \& 主流）}
+
+这是 Droid 正常、合理、可规模化的使用方式。Spec 存在于 Git 仓库或 Factory.ai 的项目空间（project-level），有 diff、有时间线、有审计记录。换 Droid 账号后，只要有权限、重新 attach 到同一个 project/repo，Agent 会读取完整 spec 历史、继续维护一致性、不会"失忆"。这是 spec-coding agent 成立的前提。
+
+\paragraph{情况 2：Spec 只存在于账号私有 workspace（早期/轻量用法）}
+
+这种情况在个人试用、Demo、PoC、免费/trial 账户中可能存在。Spec 存在于账号私有存储、非 repo 绑定，换账号后读不到历史、spec 状态断层。新账号的 Droid 只能看到"当前 spec 快照"或空白，spec 演化历史丢失。这不是 spec-coding 的失败，而是"没把 spec 当工程资产"。
+
+\subsection{Spec-coding agent 必须"去账号化"}
+
+如果 spec 跟账号走，人走了 spec 也走了、agent 无法继承、团队协作不成立，那它就退化成高级 Copilot。所以 Droid 必须满足：Spec 的身份 = 项目身份，而不是 = 用户身份。否则法律上不可审计、工程上不可继承、商业上不可规模化。
+
+\subsection{连续性对比}
+
+Claude Code：换账号 = 全断。Droid（正确用法）：换账号 $\neq$ 换 spec。这正是 spec-coding 的核心价值之一。
+
+\subsection{确认检查点}
+
+1. Spec 是否存在于 Git/Project 级别？2. 换账号后，是否能重新 attach 同一个 project？3. Spec 是否有可查看的历史 diff？如果都有则不会断层，任意一个没有则存在断层风险。
+
+\subsection{终极总结}
+
+在真正的 spec-coding agent 中，spec 的连续性由"项目"保证，而不是由"账号"保证；如果换账号就断层，那不是你用错了，而是系统还没到那个范式。
+
+\section{OpenCode 项目定位}
+
+\subsection{核心定位}
+
+OpenCode 是一个开源、模型无关、隐私优先的 AI 编码 Agent 平台，用来在终端/IDE/桌面中"长期协作式"地写代码，而不是一次性补全。
+
+\subsection{四个核心特征}
+
+\paragraph{1. Open Source AI Coding Agent（不是 Copilot）}
+
+不是代码补全工具或单次问答聊天机器人，而是 Agent（代理），能持续参与项目、支持多 session、并行工作。关键词是：Agent，而不是 Assistant。
+
+\paragraph{2. 模型无关（Model-agnostic）基础设施}
+
+不绑定 Claude/GPT/Gemini，支持 75+ LLM 提供商，支持云模型和本地模型，甚至可以登录你已有的 Claude Pro/Max。OpenCode 把自己定位成"AI coding agent 的运行时与 UI，而不是模型本身"。
+
+\paragraph{3. 多入口的统一 Agent 体验}
+
+Terminal（CLI）、IDE（扩展）、Desktop App（macOS/Windows/Linux），但核心 agent 是同一个概念。说明它的定位不是 UI，而是 Agent 层。
+
+\paragraph{4. 隐私优先（Privacy-first）}
+
+不存储你的代码、不存储上下文、可以在高隐私环境使用。它把自己放在了企业/安全/本地开发友好的位置。
+
+\subsection{OpenCode 不是什么}
+
+\paragraph{不是 Claude Code 的直接替代}
+
+Claude Code 是强模型、强 context、弱可控性、非开源；OpenCode 是强 agent 框架、强可控性、模型可替换、完全开源。一个是"模型能力驱动"，一个是"系统能力驱动"。
+
+\paragraph{不是 Cursor/Copilot 那条线}
+
+Cursor/Copilot 的核心是即时补全、人主导 AI 辅助；OpenCode 的核心是任务驱动、AI 主动执行、多 session 并行。OpenCode 更接近"自动化工程助手"。
+
+\subsection{范式定位}
+
+OpenCode 的真实范式是：Context-light + Agent-heavy + External State。它不依赖超长对话，强调 session/agent，更适合外置 spec、repo-based memory、多 agent 协作。从理念上看，它比 Claude Code 更接近 Droid/Kiro 那一侧。
+
+\subsection{终极总结}
+
+OpenCode 的定位不是"最聪明的 AI"，而是"最开放、最可控、最工程化的 AI 编码 Agent 平台"。
+
+\section{LSP 与 AI 编码 Agent}
+
+\subsection{LSP 是什么}
+
+LSP（Language Server Protocol）是一套标准协议，用来把"语言理解能力"从编辑器中解耦出来。编辑器（VS Code/Vim/IntelliJ/Terminal）通过 LSP 协议与语言服务器通信，后者了解语法、类型、项目结构。
+
+\subsection{有无 LSP 的本质区别}
+
+\paragraph{没有 LSP（纯文本 AI）}
+
+AI 看到的是一堆文件内容 + 模糊上下文。结果通常是：猜 API、猜类型、容易 hallucinate、改错文件/行号。
+
+\paragraph{有 LSP（工程级 AI）}
+
+AI 可以查询真实符号表、知道函数定义在哪、知道类型/引用/依赖、精确跳转/重构。这是"像工程师一样改代码"的前提。
+
+\subsection{LSP 是 Coding Agent 的分水岭}
+
+没有 LSP 的 AI = 聊天机器人，有 LSP 的 AI = 工程协作者。尤其对 spec-coding、refactor、大项目、多文件一致性、长期维护至关重要。
+
+\subsection{各工具对 LSP 的支持}
+
+\paragraph{OpenCode —— 显式、原生、卖点级支持}
+
+LSP enabled，Automatically loads the right LSPs for the LLM。OpenCode 会自动启动对应语言的 LSP，把 LSP 查询结果作为 agent 的输入。LSP 是一等公民，不是"顺带支持"。这是 OpenCode 非常重要的定位优势。
+
+\paragraph{Claude Code —— 隐式支持（但不可控）}
+
+内部确实使用了 LSP/AST/repo analysis，但对用户完全不可见、不可配置，无法选择 LSP、强制读取、验证是否使用。结论：Claude Code "有 LSP 能力，但你无法把它当成系统依赖"。
+
+\paragraph{Droid —— 必然支持（但抽象在 agent 层）}
+
+从设计上必须有 LSP/AST/graph，否则无法维护 spec 一致性。但通常不会跟你说"这是 LSP"，而是说"结构化代码理解"、"semantic model"。LSP 在 Droid 里是底层基础设施，不是功能点。
+
+\subsection{LSP 与 spec-coding 的关系}
+
+LSP $\neq$ Memory，但 LSP 是"spec 能落地"的前提条件。Memory/spec 决定"应该做什么"，LSP 决定"怎么安全地做"。没有 LSP，spec-coding 只能停留在纸面。
+
+\subsection{终极总结}
+
+LSP 是让 AI 从"猜代码"升级为"理解代码"的基础设施；OpenCode 显式拥抱 LSP，Claude Code 隐式使用，Droid 将其视为理所当然。
+
+\section{为什么 OpenCode 把显式 LSP 当卖点}
+
+\subsection{核心原因}
+
+OpenCode 把「显式 LSP」当卖点，不是因为它比 Claude Code/Droid 更"先进"，而是因为它解决的是「开源、可控、可验证」这个层级的问题。
+
+Claude Code/Droid："我有，但你别管"。OpenCode："我有，而且你可以看、可以控、可以换"。
+
+\subsection{为什么 Claude Code/Droid "不需要说 LSP"}
+
+对闭源/强系统来说，LSP 是"理所当然的内脏器官"。在这些工具中，LSP $\approx$ AST/symbol graph/semantic index，是 agent 的基础设施，用户无权、也无必要干预。所以它们的叙事是"我理解你的代码"，而不是"我用 LSP 理解你的代码"。LSP 在这里不是产品卖点，而是工程前提。
+
+显式暴露 LSP 反而会"降低抽象层级"。如果你还在选 LSP、看诊断，那说明 agent 没把事情做好。所以它们刻意不提 LSP。
+
+\subsection{OpenCode 为什么要"高调说 LSP"}
+
+\paragraph{OpenCode 是「开源 Agent 框架」，不是「封装好的 Agent」}
+
+用户是开发者、架构师、OSS 社区、企业 IT/安全团队。这些人关心：AI 到底"看到了什么"？是否真的理解代码？能不能在我环境里复现？显式 LSP = 可验证的工程承诺。
+
+\paragraph{必须对抗一个默认怀疑}
+
+在开源世界："你说你理解代码？你是不是只是 grep + prompt？"OpenCode 用 "LSP enabled" 明确告诉你：我不是纯文本 agent、我走的是标准语言协议、我能跑在你的本地环境。这是信任构建，而不是炫技。
+
+\paragraph{需要和「聊天式 AI」明确切割}
+
+最大的竞争对手不是 Claude Code/Droid，而是"CLI 聊天机器人"、"包了一层 UI 的 ChatGPT"。所以它必须强调"我是工程 agent，不是 chat bot"，而 LSP 是最好、最直观的工程信号。
+
+\subsection{OpenCode 的"可替换性焦虑"}
+
+OpenCode 的定位是 Model-agnostic Agent Runtime，意味着模型随时可能换，能力不能依赖模型"聪明"。那什么是不随模型变化的确定性能力？LSP。LSP 是本地的、确定的、可测试的，和模型能力解耦。所以 OpenCode 必须把 LSP 抬到台前，作为"系统确定性"的锚点。
+
+\subsection{终极总结}
+
+LSP 在 Claude Code/Droid 中是"默认前提"，在 OpenCode 中是"公开承诺"；前者追求抽象完成度，后者追求可控与可验证。
+
+\section{spec-kit 与 Claude Code 的组合}
+
+\subsection{spec-kit 是什么}
+
+spec-kit 是一个开源工具包，专门为 Claude Code 这样的"对话驱动 AI"设计的 spec-first 外挂框架。它把 spec 从"对话中的隐形共识"变成"repo 里的一等公民"。
+
+\subsection{核心机制}
+
+\paragraph{Spec 外置化}
+
+spec 以 markdown 文件形式存在项目仓库中，不再是藏在对话里的"默契"，而是 commit 历史、可 diff、可回滚的工程资产。
+
+\paragraph{强制读取流程}
+
+在你执行任何代码操作前，spec-kit 会自动检查并提示 Claude 先读取 spec，如果你没明确说"跳过 spec"，它会把 spec 内容注入到 Claude 的 context 中。
+
+\paragraph{一致性校验}
+
+在你写完代码后，spec-kit 可以运行一套校验，检查实现是否偏离 spec（类型签名、公开 API、模块边界等）。
+
+\subsection{与 Droid 的对比}
+
+\paragraph{能力覆盖度}
+
+维度：spec-kit + Claude Code vs Droid。spec-coding 流程：完整 vs 原生。spec 是否外置：repo vs 系统级。spec 是否可 diff：是 vs 是。spec 是否驱动实现：是 vs 是。多 agent/并行：手动 vs 原生自动。一致性校验：半自动 vs 内建。人工介入成本：高 vs 低。稳定性/抗漂移：中 vs 高。
+
+\paragraph{本质差异}
+
+spec-kit + Claude Code：spec 是 repo 里的文件，但何时更新、是否冲突、是否遗漏主要靠人 + 提示 discipline。Droid：spec 是 agent 的一等公民，agent 会自动检查 spec 覆盖率、做一致性分析、阻止违规实现。系统在维护 spec，而不是你。
+
+\paragraph{Claude Code 仍是"强模型 + 弱系统"}
+
+即使有 spec-kit，Claude Code 依然非常聪明但非常容易"自作主张"。spec-kit 是一套"硬护栏"但不是强制执行引擎。这意味着你得持续"盯着流程"，不能完全放手。
+
+\paragraph{Droid 的优势在规模化和自动化}
+
+当 feature 多了、人多了、agent 多了、spec 演化复杂了，Droid 的优势会指数级放大，而 spec-kit + Claude Code 会开始显得"重人工"。
+
+\subsection{适用场景}
+
+\paragraph{非常适合}
+
+单人/小团队、已经在用 Claude Code、想要 spec-driven、可审计、不想换平台、对流程有自律要求的人。
+
+\paragraph{不太适合}
+
+希望"我只写需求，其它全自动"、多 agent 自动并行、企业级 spec 治理。
+
+\subsection{终极总结}
+
+spec-kit 确实可以把 Claude Code 提升到"可用的 spec-coding agent"，但 Droid 的优势不在"有没有 spec"，而在"spec 是否由系统原生维护"。
+
+} % end small

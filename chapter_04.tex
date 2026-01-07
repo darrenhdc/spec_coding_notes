@@ -1,0 +1,327 @@
+\chapter{Spec Coding 与工程实践}
+\small
+
+\section{Spec Coding 的核心理念}
+
+\subsection{Vibe Coding 与 Spec Coding 的关系}
+
+Vibe Coding 是「生成方式」，Spec Coding 是「约束方式」。两者不是对立关系，而是同一条工程成熟度曲线上的不同阶段。
+
+\begin{description}
+  \item[Vibe Coding] 在不完全明确需求的情况下，通过人与模型的「感觉对齐」，快速逼近可用实现。典型场景包括原型验证、Hackathon、个人项目、探索性功能、UI/UX 草图。
+  \item[Spec Coding] 把「你脑子里的隐性约束」显式化，强迫模型在一个受控空间里生成代码。核心特征包括明确输入/输出、明确不变量（invariants）、明确边界条件、明确失败方式。典型场景包括核心业务逻辑、金融/医疗/安全相关代码、多人协作、长期维护项目、自动化测试/CI。
+\end{description}
+
+\subsubsection{成熟团队的流程}
+
+成熟团队的真实流程是：Vibe $\rightarrow$ 半 Spec $\rightarrow$ 强 Spec。
+
+\begin{enumerate}
+  \item \textbf{Vibe 阶段}：探索问题空间。「我们到底要做什么？」「这个交互感觉对不对？」「技术路线能不能跑通？」——快、乱、但便宜。
+  \item \textbf{半 Spec 阶段}：固化直觉。把成功的 vibe 对话提炼成接口、状态机、约束条件，开始补测试。把「感觉」变成「规则」。
+  \item \textbf{Spec 阶段}：规模化与防退化。明确 spec 让模型可复现、可回滚、可替换。此时 vibe 是负资产。
+\end{enumerate}
+
+\subsection{Skills 文档与 Spec 的关系}
+
+传统的「skills」本质上只是「为了让自己或别人搞清楚这次要怎么做，而写的临时解释」。在使用 droid 做 spec-coding 的前提下，绝大多数为单个 feature 服务的 skills 文档都可以不写。
+
+\begin{description}
+  \item[Skills] vibe 的长期结晶。跨 feature、长期有效的经验总结，如「我们项目里如何做权限控制」、Onboarding 给新人的指南、一次重要的技术复盘（post-mortem）。
+  \item[Spec] 一次性工程决策说明，服务于实现，而不是长期规范。
+\end{description}
+
+判断标准：「如果半年后我或别人看到 main，只看代码和测试，还需要知道这份 spec 吗？」需要则 commit，不需要则不 commit。
+
+\section{文档体系与优先级}
+
+\subsection{文档分层}
+
+\begin{enumerate}
+  \item \textbf{ADR (Architecture Decision Record)} —— 最高权威（为什么）。记录「为什么我们在架构上做了这个决定」。
+  \item \textbf{README.md} —— 项目事实（是什么）。项目是什么，怎么用。
+  \item \textbf{PRD (Product Requirements Document)} —— 产品目标与范围。用户价值、功能范围、非功能性约束。
+  \item \textbf{Plan / Design doc} —— 实现方案与阶段计划。技术方案、模块划分、里程碑。
+  \item \textbf{WIP spec} —— 协作中的未定设计。
+  \item \textbf{CLAUDE.md} —— AI 行为约束（怎么协作）。spec 优先级、禁止事项、代码风格、agent 行为边界。
+  \item \textbf{Tool-local specs} (.specify/, droid specs) —— 一次性任务草稿。
+\end{enumerate}
+
+\subsection{Spec 的三种形态}
+
+\begin{description}
+  \item[工作态 spec] 不进 git。用于思考、对齐、驱动实现。形态：本地笔记、Chat/LLM 对话、临时 markdown（不 add）、issue comment/PR description。
+  \item[协作态 spec] 进 git。形态：docs/wip/feature-x.md、specs/feature-x.md、design/feature-x.md。merge 时要么一起 squash 进 main，要么在 merge 前删除。
+  \item[契约态 spec] 必须长期存在。形态：docs/adr/0007-auth-flow.md、docs/api/*.md、README 更新。是团队「记忆」。
+\end{description}
+
+\subsection{Claude Code 中的文档角色}
+
+\begin{description}
+  \item[PRD.md] 产品事实层（Intent / Truth）。需求的真理来源，不是给 Claude 发挥的，而是用来约束 Claude 的。包含 Goals、Non-Goals、User Stories。不该有技术选型、文件结构、类名/函数名。
+  \item[plan.md] 技术决策层（Design / Architecture）。在不违反 PRD 的前提下，我们决定如何实现。包含技术栈、模块拆分、数据流/控制流、关键 trade-off。不该有具体代码实现、逐行逻辑、prompt 指令。
+  \item[CLAUDE.md] Agent 行为控制层（Meta / Governance）。Claude 在这个 repo 里「该如何当一个工程师」。包含 General Rules、Coding Style、Workflow。不适合放产品需求（PRD）、技术架构（plan）、临时聊天指令（prompt）。
+\end{description}
+
+\section{上下文管理与记忆}
+
+\subsection{Context 与 Memory 的区别}
+
+\begin{description}
+  \item[Context (上下文)] 当前模型能「看到」的所有 token，包括对话历史、系统提示、/compact 摘要。特点：不可查看、不可版本化、不可靠、适合短期推理。Context 是「工作记忆」，不是资产。
+  \item[Memory (记忆)] 你希望模型长期、不漂移记住的东西。特点：必须显式存在（文件/DB）、可编辑、可 diff、可回滚。Memory 是「工程真理的一部分」。
+  \item[Spec (规范)] Memory 的「强约束子集」，用来定义不变量、边界条件、行为契约。Spec = 高强度 Memory。
+\end{description}
+
+\subsection{Memory 管理等于上下文管理吗？}
+
+不等价。上下文管理只能做三件事：控制对话长度、合理使用 /compact、频繁做理解验证。你无法真正管理 context。
+
+Memory 管理能做的事：定义结构、持久化、明确优先级、强制 agent 读取。这是你能真正掌控的部分。
+
+\subsection{Claude Code 下的可行 Memory 管理体系}
+
+\begin{verbatim}
+/docs
+├── SPEC.md            ← 不变量 / 合同（极少改）
+├── ARCH.md            ← 架构决策
+├── CURRENT_STATE.md   ← 当前阶段状态（高频改，/compact 后必读）
+└── DECISIONS.md       ← 防止反复争论
+\end{verbatim}
+
+每次新对话 / /compact 后，都明确告诉 Claude：「当对话历史、直觉判断与 docs/ 中的内容冲突时，以 SPEC.md $\rightarrow$ ARCH.md $\rightarrow$ CURRENT\_STATE.md 的顺序为准。」
+
+\subsection{/compact 命令的作用}
+
+/compact 的作用是：把当前对话中「对后续实现不再重要的上下文」压缩成一个更短的内部摘要，以释放上下文窗口。
+
+\begin{itemize}
+  \item \textbf{会}：减少 token 占用、保留关键信息
+  \item \textbf{不会}：保存 plan、生成 spec、不可逆
+\end{itemize}
+
+\textbf{安全使用前提}：在执行 /compact 之前，最好已经做到至少一件事：
+\begin{enumerate}
+  \item 把关键设计/约束写进项目文件（如 SPEC.md、ARCH.md、README.md）
+  \item 明确确认：「前面的细节即使丢掉，也不会影响后续工作」
+\end{enumerate}
+
+\textbf{标准流程}：文档固化 $\rightarrow$ /compact $\rightarrow$ 理解验证。
+
+\subsection{/compact 后的理解偏移检测}
+
+\textbf{快速三连问}：
+\begin{enumerate}
+  \item \textbf{状态复述}：请用不超过 5 条要点，复述当前项目的目标、已完成内容和接下来要做的事。
+  \item \textbf{硬约束复述}：列出当前实现中必须保持不变的 3–5 个关键约束或不变量。
+  \item \textbf{反例推理}：如果违反其中一个约束，会出现什么具体问题？请给一个例子。
+\end{enumerate}
+
+\textbf{红旗信号}（一看就该警惕）：
+\begin{itemize}
+  \item 使用模糊词：「一般来说」「通常情况下」
+  \item 把「实现细节」说成「可选项」
+  \item 新增你没说过的目标
+  \item 忘记之前你反复强调的限制
+\end{itemize}
+
+\section{AI 工具对比}
+
+\subsection{Claude Code vs Droid vs OpenCode vs Kiro}
+
+\subsubsection{Claude Code}
+\begin{itemize}
+  \item \textbf{定位}：增强型开发者工具（copilot++）
+  \item \textbf{Plan Mode}：把「vibe $\rightarrow$ spec 的中间态」产品化了。在动手写代码之前，强制模型显式化「它理解的 spec」。
+  \item \textbf{/context}：不可查看。没有 /context、/show-context、/dump-context 之类的命令。
+  \item \textbf{LSP 支持}：隐式支持（内部确实使用了 LSP/AST/repo analysis），但对用户完全不可见、不可配置。
+  \item \textbf{适用}：单人/小团队、已在使用 Claude Code、想要 spec-driven 但不想换平台。
+\end{itemize}
+
+\subsubsection{Droid (Factory.ai)}
+\begin{itemize}
+  \item \textbf{定位}：真正的 spec-coding agent
+  \item \textbf{核心特征}：spec 是一等公民、可编辑、可 diff、agent 可以修改 spec、code 必须服从 spec
+  \item \textbf{差异}：Claude Code 的 plan 是「建议」，Droid 的 plan 是「执行约束」
+  \item \textbf{记忆}：spec 绑定在项目/Repo/Org（不是账号级）
+  \item \textbf{适用}：中大型工程、需要 spec 一致性校验、多 agent 自动并行
+\end{itemize}
+
+\subsubsection{OpenCode}
+\begin{itemize}
+  \item \textbf{定位}：开源、模型无关、隐私优先的 AI 编码 Agent 平台
+  \item \textbf{特点}：支持 75+ LLM 提供商、显式 LSP enabled、多入口（Terminal/IDE/Desktop）、隐私优先（不存储你的代码）
+  \item \textbf{范式}：Context-light + Agent-heavy + External State
+  \item \textbf{适用}：需要可替换模型、企业/安全/本地开发友好
+\end{itemize}
+
+\subsubsection{Kiro (AWS)}
+\begin{itemize}
+  \item \textbf{定位}：企业级 agentic IDE
+  \item \textbf{三层结构}：Requirements（需求层）、Technical Design（设计层）、Tasks/Hooks（执行层）
+  \item \textbf{定位}：spec 是「人维护的工程文档」，而非「agent 维护的系统真理」
+  \item \textbf{意义}：第一个把「spec coding」带进主流 IDE 的产品
+\end{itemize}
+
+\subsection{LSP (Language Server Protocol)}
+
+LSP 是一套标准协议，用来把「语言理解能力」从编辑器中解耦出来。
+
+\begin{itemize}
+  \item \textbf{无 LSP}：AI 看到的是「一堆文件内容 + 模糊上下文」，结果通常是猜 API、猜类型、容易 hallucinate、改错文件/行号。
+  \item \textbf{有 LSP}：AI 可以查询真实符号表、知道函数定义在哪、知道类型/引用/依赖、精确跳转/重构。
+\end{itemize}
+
+\textbf{使用 LSP 的关键}：不在于「操作它」，而在于「提出只有 LSP 才能完成的任务」。
+
+\begin{itemize}
+  \item 永远用符号名，不用「这个函数」
+  \item 要求更新所有引用
+  \item 要求类型不变/API 不变
+  \item 先分析，再实现
+  \item 允许 agent 说「不确定，需要确认」
+\end{itemize}
+
+\subsection{Function Calling 与 MCP Tools}
+
+\textbf{函数调用（function calling）}是：AI 说「我要用某个函数，并给你参数」。
+
+\begin{itemize}
+  \item AI 不执行代码
+  \item AI 只做决定
+  \item 执行的是你（或系统）
+\end{itemize}
+
+\textbf{MCP (Model Context Protocol)}是：一套「工具怎么描述给 AI 看」的标准。
+
+\begin{itemize}
+  \item 规定这个工具叫什么、有哪些参数、参数是什么类型、返回什么结果
+  \item 让「工具」看起来像「函数」
+\end{itemize}
+
+\section{Spec 在工程中的位置}
+
+\subsection{.specify/ 目录的角色}
+
+.specify/ 的本质是：LLM 的工作目录/私有工具状态/临时输入输出。它更像：
+\begin{itemize}
+  \item .idea/、.vscode/、.cursor/
+  \item 不稳定、工具相关、不保证长期语义、可随工具版本变化
+\end{itemize}
+
+\textbf{典型结构}：
+\begin{verbatim}
+.specify/
+├── README.md            #（可选）工具说明
+├── context.md           # 当前任务的上下文摘要
+├── goal.md              # 本次任务目标
+├── constraints.md       # 任务级约束（非工程契约）
+├── plan.md              # 执行计划 / 步骤
+├── notes.md             # 中间思考 / 草稿
+└── outputs/             # 临时生成物（可丢）
+\end{verbatim}
+
+.specify/constitution(.md) 是「specify 工具内部的任务级约束说明」，名字听起来像「宪法」，但在工程现实中，它只是「一次性任务说明」。真正的宪法，永远不住在工具目录里。
+
+\subsection{Spec 是否会被当成 Spec？}
+
+有可能。把文件放进 spec/ 目录 $\neq$ 系统就一定会「把它当成 spec」。spec 是否成立，取决于：它是否被「强制作为真理源使用」。
+
+\textbf{成立条件}：
+\begin{enumerate}
+  \item 明确宣告「spec = 唯一真理源」
+  \item 强制「引用义务」（每个实现必须引用 spec 文件和章节）
+  \item spec 可被 diff/review
+  \item 冲突时「显式处理」，而不是自动融合
+\end{enumerate}
+
+\subsection{CLAUDE.md 最小模板}
+
+\begin{verbatim}
+# Claude Project Constitution
+
+This file defines non-negotiable rules for all work in this repository.
+
+## 1. Source of Truth
+- Files under /spec are the authoritative source of truth.
+- Code, tests, conventions, or prior behavior MUST NOT override spec.
+- If code conflicts with spec, spec always wins.
+
+## 2. Obligation to Cite Spec
+- Every behavior change MUST reference at least one spec file and section.
+- References must use a concrete path (e.g. spec/constraints.md#HC-02).
+- Changes without explicit spec citation are invalid.
+
+## 3. Handling Missing or Ambiguous Spec
+- If the spec does not clearly define a behavior:
+  - STOP and ask for clarification.
+  - DO NOT infer, guess, or extend behavior.
+- Silence in spec does NOT imply permission.
+
+## 4. Conflict Handling
+- If spec and implementation diverge:
+  - Report the conflict explicitly.
+  - Do NOT auto-reconcile or "fix forward".
+  - Wait for spec update before proceeding.
+
+## 5. Scope Control
+- Do NOT introduce new behavior, APIs, or dependencies
+  unless explicitly required by spec.
+- Refactoring is allowed only when it preserves all spec-defined behavior.
+
+## 6. Workflow Requirements
+Before making changes:
+1. Re-read relevant files under /spec.
+2. List the constraints that must not change.
+3. Confirm the planned change complies with all constraints.
+Only proceed after completing these steps.
+
+## 7. Failure Mode
+- When in doubt, choose to: Ask, Stop, Report uncertainty
+- Never choose to "be helpful" at the cost of violating spec.
+
+End of rules.
+\end{verbatim}
+
+一个有效的 CLAUDE.md 不是教 AI 怎么写代码，而是规定：在任何不确定性下，AI 必须选择「服从 spec，而不是取悦用户」。
+
+\section{工程记忆的连续性}
+
+\subsection{Spec 在仓库 vs 在账号}
+
+\textbf{判断标准}：Spec 是否能被「另一个账号」在不依赖你本人的情况下完整恢复？
+
+\begin{itemize}
+  \item \textbf{Spec 在项目/Repo/Org}：不会断层。Git 仓库或 Factory.ai 的项目空间（project-level）、有 diff、有时间线、有审计记录。换 Droid 账号：只要有权限、重新 attach 到同一个 project/repo，agent 会读取完整 spec 历史、继续维护一致性。
+  \item \textbf{Spec 只在账号私有 workspace}：会断层。账号私有存储、非 repo 绑定，换账号后读不到历史、spec 状态断层。
+\end{itemize}
+
+在真正的 spec-coding agent 中，spec 的连续性由「项目」保证，而不是由「账号」保证；如果换账号就断层，那不是你用错了，而是系统还没到那个范式。
+
+\subsection{如何判断 Spec 是否在仓库}
+
+\textbf{三问判定法}：
+\begin{enumerate}
+  \item Spec 是否能被「另一个账号」在不依赖你本人的情况下完整恢复？
+  \item Spec 是否存在一个「可版本化、可 diff 的实体」？
+  \item Agent 引用 spec 时，是「引用文件」，还是「模糊转述」？
+\end{enumerate}
+
+终极判断标准：「如果我今天离职、账号被删，这个项目是否还能在 spec 不丢失的情况下继续演进？」
+\begin{itemize}
+  \item 能 $\rightarrow$ spec 在仓库/项目
+  \item 不能 $\rightarrow$ spec 在账号
+\end{itemize}
+
+\section{关键术语}
+
+\begin{description}
+  \item[Drift] 逐步偏离（context/spec/behavior）。context drift（上下文漂移）、spec drift（规格漂移）、behavior drift（行为漂移）。
+  \item[Divergence] 架构/实现逐步分叉、偏离原设计。implementation divergence、design divergence。
+  \item[Inconsistency] 结果描述。behavioral inconsistency、state inconsistency。
+  \item[Hallucination] 编造不存在的事实。模型在「不知道或不确定」的情况下，仍然自信地生成看起来合理、但实际上是错误或不存在的信息。
+\end{description}
+
+LSP-first workflows significantly reduce hallucination, while explicit specs are necessary to prevent drift.
+
+Hallucination 是「凭空编造」，Drift 是「逐步跑偏」；前者靠 LSP 和事实源解决，后者靠 spec 和结构化流程解决。

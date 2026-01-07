@@ -1,0 +1,363 @@
+% chapter_13.tex
+\small
+
+\section*{Spec-Kit 与 Claude Skills 深度解析}
+
+\subsection*{一、spec-kit vs PRD+plan+CLAUDE.md 的本质差异}
+
+你现在说的「PRD + plan + CLAUDE.md」其实是成熟团队的"手工 Spec-Driven"。先明确一点：你描述的这套做法，本质上已经是 \textbf{Spec-Driven Development（SDD）}了。区别不在\textbf{理念}，而在\textbf{机制}。
+
+\subsubsection*{1. 手写 PRD + plan + CLAUDE.md 的特点}
+
+\textbf{优点：}完全可控、没有隐式流程、高度贴合你自己的工程习惯、Claude Code 行为"可预期"。
+
+\textbf{问题：}强依赖个人 discipline，很容易出现 PRD 和 plan 漂移、plan 和实现不一致、忘了补 checklist。多 feature / 多人时一致性迅速下降。这套方式在「一个人或小团队」里很好，在规模化时很累。
+
+\subsubsection*{2. spec-kit + Claude Code 的核心差异}
+
+spec-kit 干的不是"帮你想需求"，而是把你现在靠自觉在做的事情，变成"强制、可追踪、可复用的流程"。
+
+\textbf{强制 artifact 链条（不能跳步）：}
+\begin{verbatim}
+constitution → spec → clarify → plan → tasks → implement
+\end{verbatim}
+
+Claude Code \textbf{不能直接从"想法 → 写代码"}，每一步都必须有对应文件。
+
+\textbf{明确"哪一步可以问不确定问题"：}例如 /speckit.clarify 明确告诉 agent：现在是补需求，不是写方案。而你手写流程里，这个阶段经常被跳过或混杂。
+
+\textbf{spec / plan / tasks 都是"机器可解析"的：}CLAUDE.md 是给人 + 给模型看的指导；spec-kit 的 artifacts 是给 agent 当"状态机"的。这让 Claude Code 不会反复"忘记自己做过什么"，不容易重构时推翻前面的决定。
+
+\subsubsection*{3. spec-kit 作为"外挂程序"的可靠性}
+
+\textbf{靠谱的地方：}spec-kit 不替代 Claude Code，不包一层"魔法 agent"，它只是生成目录结构、Markdown artifacts、shell / ps 脚本。你随时可以不用它，项目不报废。如果哪天你觉得太重不值，可以保留 specs / plan / tasks.md，删除 CLI 和脚本，Claude Code 依然能继续用。它已经被 GitHub 内部 / Copilot 团队在用，这是给 Copilot / Claude Code / Codex CLI 真实用的，不是 demo 玩具。
+
+\textbf{不适合的地方：}流程很"啰嗦"，如果你是快速试错、hackathon、一次性脚本，spec-kit \textbf{明显过重}。它不会让 Claude 更聪明，如果你现在的问题是"Claude 老是写烂代码"，spec-kit \textbf{救不了你}，它只解决忘步骤、漂移、自相矛盾的问题。对已经非常成熟的个人流程，如果你 PRD 写得很清楚、plan 非常工程化、CLAUDE.md 用得很好，spec-kit 对你是 \textbf{20\% 提升，不是 2× 提升}。
+
+\subsubsection*{4. 什么时候推荐使用 spec-kit}
+
+\textbf{强烈推荐：}多 feature 并行、长期项目、会反复改 spec、需要 Claude Code 长时间保持一致认知、想把"好习惯"变成"默认行为"。
+
+\textbf{可选：}solo 项目、中等复杂、已经有稳定 PRD + plan 模板，可以只学 spec-kit 的结构，不一定用 CLI。
+
+\textbf{不推荐：}快速原型、一次性脚本、明确知道"我就是要 vibe coding"。
+
+\textbf{总结：}spec-kit 不是"Claude 的外挂大脑"，而是把你现在靠自觉维护的 PRD / plan / CLAUDE.md 流程，变成一套可执行、可审计、可持续的 Spec-Driven 工程流水线；如果你已经是成熟工程实践者，它不会颠覆你，但会帮你少犯错、少返工。
+
+\subsection*{二、Claude Skills 的启动方式}
+
+Claude 项目的 skill 并不是"写在 Claude 里"，而是写在「Claude 所运行的宿主环境」中。所以答案不是一个文件名，而是一个\textbf{分层答案}。
+
+\subsubsection*{1. Claude 启动 Skill 的 3 种常见方式}
+
+\textbf{方式一：Slash Command（你最可能用到的）}
+
+这是 \textbf{spec-kit / Claude Code / Copilot} 里最常见的形式。你看到的是 /speckit.specify、/speckit.plan、/speckit.tasks 等。实际发生的是：环境（CLI / IDE）注册了一个 skill，告诉 Claude 当用户输入 /speckit.specify，你必须使用指定模板、写入指定文件、遵守指定规则。Claude 不是"自由回答"，而是进入这个 skill 的执行模式，按 skill 的 contract 输出。Slash command = 显式启动 skill，Claude \textbf{不会自己随便用}，必须你或系统明确触发。
+
+\textbf{方式二：Tool / Function Call（你看不到，但在发生）}
+
+这是 \textbf{Claude API / Copilot / Droid 内部}最常见的。Claude 在内部做的是类似：
+\begin{verbatim}
+{
+  "tool_call": {
+    "name": "analyze_repo_structure",
+    "arguments": { "depth": 3 }
+  }
+}
+\end{verbatim}
+
+系统告诉 Claude 你现在"可以用"这些 tools（skills），Claude 在推理过程中判断这个问题我不能靠文本回答，我需要调用一个 tool，然后自动触发。这类 Skill 的特点：自动、不需要你输入 /something、常见于 Droid 自动 agent、无人值守流程。你对它的控制力最弱，但自动化最高。
+
+\textbf{方式三：约定式 Skill（"像 Skill，但不是显式 Skill"）}
+
+这是你现在可能已经在用、但没意识到的。例如 CLAUDE.md：你在 CLAUDE.md 里写 "When reviewing code: Always check for concurrency issues; Always suggest tests; Never modify public APIs without confirmation"。这本质上是一个"软 Skill"，它没有明确名字、明确调用指令，但它定义了何时触发、如何执行、什么不能做。Claude 在每轮对话中都会"启动"它。
+
+\subsubsection*{2. Claude 什么时候决定启动 Skill}
+
+\textbf{用户显式要求：}例如 /speckit.plan，强制启动。
+
+\textbf{系统提示强制要求：}例如"当需要修改文件时，必须使用 file\_edit skill"，Claude \textbf{不能直接输出文本}。
+
+\textbf{推理中发现"必须用工具"：}例如要读 repo、要跑测试、要查文件，Claude 自动 tool call（如果允许）。
+
+\subsubsection*{3. 为什么你会感觉"Claude 有时候不用 Skill"}
+
+因为 Skill 不是默认能力。Claude 只有在被允许、被提示、被强制时才会用，否则它会退回到"自由生成模式"（最危险、也最灵活）。
+
+\textbf{判断口诀：}你能"点名叫它干活"的，才叫 Skill；它"自己想干就干"的，是 Agent 内部能力。
+
+\subsection*{三、.specify/ 目录的位置和作用}
+
+\textbf{结论：}.specify/ 目录是存在于「项目 root 目录」里的普通文件夹，不是存在于 Claude、spec-kit、IDE 或宿主机某个隐式位置。它就是你 repo 里的文件。
+
+\subsubsection*{1. .specify/ 的实际位置}
+
+假设你的项目结构是：
+\begin{verbatim}
+my-project/
+├── src/
+├── package.json
+├── CLAUDE.md
+└── .specify/
+    ├── memory/
+    │   └── constitution.md
+    └── specs/
+        └── 001-feature/
+            ├── spec.md
+            └── plan.md
+\end{verbatim}
+
+那它满足：和 src/、package.json 同级；在 Git 仓库里（除非你 .gitignore 掉）；你可以 cat 它、git diff 它、PR review 它。它不是某个隐藏的"AI 状态目录"。
+
+\subsubsection*{2. 为什么很多人会误以为它"在宿主机"}
+
+\textbf{错觉来源 1：}是 CLI 创建的 → 被误以为是"工具私有数据"。specify init 是 CLI 命令，但它做的只是在当前目录创建 .specify/、写模板文件。它不会写到 \textasciitilde{}/.config、\textasciitilde{}/.claude、IDE cache。
+
+\textbf{错觉来源 2：}Claude "记得"它 → 让人以为是内存。Claude Code 每轮对话都会读取 .specify/memory/constitution.md、读取当前 feature 的 spec / plan。这会让人感觉"这是 Claude 的记忆"，但实际上只是 Claude 每次都重新读项目文件。
+
+\textbf{错觉来源 3：}.specify/ 是隐藏目录（以点开头），在 macOS / Linux 里 Finder / ls 默认不显示，新手很容易忽略。但这只是 Unix 命名习惯，不是"私有"。
+
+\subsubsection*{3. 它和 CLAUDE.md 的关系}
+
+\begin{itemize}
+\item \textbf{CLAUDE.md}：项目 root，全局、跨 feature 的长期规则
+\item \textbf{.specify/memory/constitution.md}：项目 root 下，spec-kit 流程中的"宪法"
+\item \textbf{.specify/specs/*/spec.md}：项目 root 下某个 feature 的功能定义
+\item \textbf{.specify/specs/*/plan.md}：项目 root 下该 feature 的技术方案
+\end{itemize}
+
+全部都在项目里，没有"跑到宿主机"的东西。
+
+\subsubsection*{4. 什么时候它"看起来不在项目里"（特殊情况）}
+
+\textbf{特殊情况 1：}你不是在 repo root 运行 agent。如果你在 cd src/ 然后 claude，Claude 可能读不到 .specify/，需要你设置 SPECIFY\_FEATURE。但文件依然在项目 root。
+
+\textbf{特殊情况 2：}非 Git 项目。spec-kit 依赖 Git 分支来判断 feature。如果你没用 Git，需要手动指定 feature，但 .specify/ 仍然在当前目录。
+
+\subsubsection*{5. 工程判断}
+
+.specify/ 是"项目知识库"，不是 agent cache。这意味着：可以 code review、可以回滚、可以跨 agent 使用、可以长期维护。而不是：临时状态、只能被某个 AI 读懂。
+
+\subsection*{四、Claude 项目 Skill 的存储位置}
+
+Claude 项目的 skill 分为三层：
+
+\subsubsection*{1. 项目级「软 Skill」——写在项目文件里（最常见）}
+
+\textbf{CLAUDE.md（最重要）：}位置是 repo/CLAUDE.md。它是 Claude 的"项目宪法"、持久生效、每次对话都会加载。本质是一个「无名字、自动启动的 Skill 集合」。例如你写的不是提示，而是能力约束：
+\begin{verbatim}
+## Architecture Rules
+- Do not introduce new services without approval
+- Prefer composition over inheritance
+
+## Coding Rules
+- Always add tests for public functions
+- Never modify migrations retroactively
+\end{verbatim}
+Claude 在\textbf{任何阶段}都会"启动这些 skills"。
+
+\textbf{项目内 Markdown artifacts（spec / plan / checklist）：}
+\begin{verbatim}
+.specify/
+  ├── memory/constitution.md
+  ├── specs/001-feature/spec.md
+  ├── specs/001-feature/plan.md
+\end{verbatim}
+它们的作用是限定 Claude 当前阶段该干什么、约束"现在是 spec，不是实现"、约束"现在是 plan，不是写代码"。这是\textbf{阶段性 skill}。
+
+\subsubsection*{2. 显式 Skill（你能"点名"的那种）}
+
+\textbf{Slash Command Skills（spec-kit 的那类）：}不在你的 repo 里，在 spec-kit / IDE 插件 / CLI 工具里。例如 /speckit.plan、/speckit.tasks。它们定义在 spec-kit 的 Python / Shell 脚本 agent integration layer。你只看到 /speckit.plan，但实际是环境注册了一个 skill，并把 contract 告诉 Claude。
+
+\subsubsection*{3. 真正的「硬 Skill」（你一般写不到）}
+
+\textbf{Tool / Function Skills（API 层）：}位置是 Claude API 调用时注册、IDE / Agent 内部代码。例如：
+\begin{verbatim}
+tools: [
+  {
+    "name": "edit_file",
+    "input_schema": { ... }
+  }
+]
+\end{verbatim}
+这些不是你写在项目里的，是宿主（Claude Code / Copilot / Droid）写的。这是 Claude 能"动文件 / 跑命令"的原因。
+
+\textbf{判断口诀：}能进 Git 的，是你能控制的 skill；不能进 Git 的，是工具给 Claude 的能力。
+
+\subsection*{五、spec-kit 实战 Demo}
+
+\subsubsection*{Demo 目标}
+
+做一个命令行 Todo 应用（Python），支持：add / list / done，数据存本地 JSON，不搞 Web、不搞框架。这个 demo 的重点\textbf{不是功能}，而是流程。
+
+\subsubsection*{前置条件确认}
+
+已安装 specify-cli、已安装 Claude Code（或你正在用支持 slash command 的 Claude）、当前目录是一个未初始化的项目。
+
+\subsubsection*{Step 0：初始化 spec-kit（只做一次）}
+
+在项目 root 目录执行：
+\begin{verbatim}
+specify init . --ai claude
+\end{verbatim}
+
+会创建 .specify/、创建模板文件、初始化 Git（如果你没 --no-git）。此时目录结构大致是：
+\begin{verbatim}
+todo-demo/
+├── .specify/
+│   ├── memory/
+│   │   └── constitution.md
+│   ├── scripts/
+│   └── templates/
+├── CLAUDE.md
+└── README.md
+\end{verbatim}
+
+到这一步为止，\textbf{还没写任何业务代码}，完全正常。
+
+\subsubsection*{Step 1：启动 Claude Code（关键）}
+
+在\textbf{项目 root 目录}启动 Claude Code，例如 \texttt{claude} 或你 IDE 里的 Claude Code 面板。你需要确认能看到 /speckit.constitution、/speckit.specify 等命令。
+
+\subsubsection*{Step 2：写「项目宪法」（constitution）}
+
+在 Claude 里输入：
+\begin{verbatim}
+/speckit.constitution
+Create simple, pragmatic principles:
+- Prefer clarity over abstraction
+- Keep dependencies minimal
+- Write code that is easy to read and modify
+- Use basic Python standard library only
+- Favor small functions and explicit logic
+\end{verbatim}
+
+这一步会生成 / 更新 .specify/memory/constitution.md。你可以打开看看，它就是 Claude\textbf{长期遵守的规则}。
+
+\subsubsection*{Step 3：写功能 spec（最关键的一步）}
+
+在 Claude 里输入：
+\begin{verbatim}
+/speckit.specify
+Build a simple command-line Todo application.
+Users can:
+- Add a todo item with text
+- List all todo items
+- Mark a todo item as completed
+
+Todos are stored locally on disk.
+This is a single-user tool and does not require authentication.
+The focus is correctness and simplicity, not performance.
+\end{verbatim}
+
+执行后你会看到 .specify/specs/001-todo-cli/spec.md。\textbf{重点：现在还没有任何技术细节}。
+
+\subsubsection*{Step 4：生成技术方案（plan）}
+
+现在你才告诉 Claude\textbf{怎么实现}。输入：
+\begin{verbatim}
+/speckit.plan
+Implement this as a Python CLI tool.
+Use argparse for command parsing.
+Persist todos in a local JSON file.
+The application should be runnable via `python todo.py`.
+\end{verbatim}
+
+会生成 .specify/specs/001-todo-cli/ 目录下的 spec.md、plan.md 以及可能的 data-model.md / research.md。打开 plan.md 看一眼，你会发现结构清晰、没写代码，但已经"像工程文档"。
+
+\subsubsection*{Step 5：生成任务拆分（tasks）}
+
+现在让 Claude 把 plan 拆成\textbf{可执行步骤}。输入：
+\begin{verbatim}
+/speckit.tasks
+\end{verbatim}
+
+会生成 .specify/specs/001-todo-cli/tasks.md。你会看到类似：Create data model、Implement JSON storage、Implement add command、Implement list command、Implement complete command。\textbf{这是 Claude 接下来"唯一允许执行的事情清单"}。
+
+\subsubsection*{Step 6：让 Claude 真正写代码}
+
+最后一步，输入：
+\begin{verbatim}
+/speckit.implement
+\end{verbatim}
+
+Claude 会按 tasks.md 顺序执行、创建 todo.py、写代码、可能运行 Python 命令、遇到错误会修。最终你应该看到：
+\begin{verbatim}
+todo-demo/
+├── todo.py
+├── todos.json   (运行后生成)
+└── .specify/
+\end{verbatim}
+
+你可以手动测试：
+\begin{verbatim}
+python todo.py add "Buy milk"
+python todo.py list
+python todo.py done 1
+\end{verbatim}
+
+\subsubsection*{你应该"体感到"的 3 件事（非常重要）}
+
+\textbf{1. Claude 没有跳步：}不能直接写代码，每一步都有文件产物。
+
+\textbf{2. 你可以随时打断 / 修改：}改 spec、重新 plan、重新 tasks。
+
+\textbf{3. 这些不是"Claude 的记忆"：}全在 repo 里，换一个 agent 也能继续。
+
+\subsubsection*{进阶练习（可选）}
+
+你可以试试问 Claude：
+\begin{verbatim}
+/speckit.analyze
+\end{verbatim}
+
+或：
+\begin{verbatim}
+Review the spec and plan and tell me if anything is over-engineered.
+\end{verbatim}
+
+\textbf{一句话总结：}这个 demo 的价值不在 Todo，而在于你已经完整跑通了一次「Spec-Driven + Claude Code」的工程闭环。
+
+\subsection*{六、Spec-Driven vs Vibe Coding 的核心差异}
+
+\subsubsection*{1. 什么是 Vibe Coding}
+
+Vibe Coding 是指：
+\begin{itemize}
+\item 从模糊想法直接开始写代码
+\item 边写边改，没有明确的 spec 阶段
+\item 依赖 AI 的"理解"和"判断"
+\item 快速迭代，但容易迷失方向
+\end{itemize}
+
+\subsubsection*{2. 什么是 Spec-Driven Coding}
+
+Spec-Driven Coding 是指：
+\begin{itemize}
+\item 先写明确的 spec（功能定义）
+\item 再写 plan（技术方案）
+\item 再写 tasks（可执行步骤）
+\item 最后 implement（写代码）
+\end{itemize}
+
+每一步都有明确的 artifact，每一步都可以被审查、修改、回滚。
+
+\subsubsection*{3. 什么时候用哪种方式}
+
+\textbf{适合 Vibe Coding 的场景：}
+\begin{itemize}
+\item 快速原型验证
+\item 学习新技术
+\item 一次性脚本
+\item 个人项目、小规模
+\end{itemize}
+
+\textbf{适合 Spec-Driven Coding 的场景：}
+\begin{itemize}
+\item 长期项目
+\item 多人协作
+\item 复杂系统
+\item 需要维护和迭代
+\end{itemize}
+
+\textbf{总结：}Vibe Coding 是"快速但不稳定"，Spec-Driven Coding 是"稳定但不快速"。选择哪种方式取决于你的项目需求、团队规模、时间约束。对于重要的、需要长期维护的项目，Spec-Driven Coding 是更好的选择。

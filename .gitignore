@@ -1,0 +1,46 @@
+# Compiled LaTeX files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex.gz(busy)
+*.xdv
+
+# Generated PDF
+main.pdf
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# macOS system files
+.DS_Store
+
+# LaTeXmk
+*.lol
+
+# BibTeX
+*.bbl
+*.blg
+*.brf
+
+# Makeindex
+*.idx
+*.ilg
+*.ind
+
+# glossaries
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.glsdefs

@@ -1,0 +1,352 @@
+\chapter{文档层级与工程治理}
+
+\small
+
+\section{核心概念：项目宪法层级}
+
+在 AI 辅助工程中，理解不同文档的职责和优先级至关重要。这不仅是"怎么用 AI"的问题，更是工程治理的根本问题。
+
+\subsection{文档职责划分}
+
+\subsubsection*{ADR（Architecture Decision Record）}
+
+\textbf{角色：项目的"宪法条款"}
+
+记录：为什么做了某个不可逆决定。面向：未来的工程师（包括你自己）。特点：稳定、可追溯、不频繁修改。
+
+ADR 是"事实之上的理由"，不是操作说明。它记录"为什么否掉了 DynamoDB 而选择 PostgreSQL"这类不可逆决策。
+
+\subsubsection*{README.md}
+
+\textbf{角色：项目的"说明书"}
+
+记录：项目是什么、如何运行/使用。面向：新人、用户、外部贡献者。特点：相对稳定、高层概述。
+
+README 可以说"我们使用 PostgreSQL"，但不应说"因为 XYZ，所以否掉了 DynamoDB"——这种理由属于 ADR。
+
+\subsubsection*{CLAUDE.md}
+
+\textbf{角色：AI 的"工作指令书"}
+
+记录：spec 优先级、禁止事项、代码风格、agent 行为边界。面向：AI（Claude / droid / 未来工具）。特点：工具相关、可变、行为导向。
+
+CLAUDE.md 是"怎么干活"，不是"为什么这么设计"。
+
+\subsection{文档优先级层级}
+
+当内容冲突时，优先级如下：
+
+\begin{verbatim}
+1. ADR（docs/adr/*）        ← 不可违反
+2. README.md                ← 项目事实
+3. WIP spec / design docs   ← 临时协作
+4. CLAUDE.md                ← AI 行为约束
+5. .specify / droid specs   ← 工具记忆
+\end{verbatim}
+
+CLAUDE.md 永远不能推翻 ADR。这是解决 spec 冲突的最终答案。
+
+\subsubsection*{实用判断句}
+
+写一段话时，问自己："这段话是在回答『为什么我们这么做』，还是『现在该怎么做』？"
+
+\begin{itemize}
+  \item 为什么 → ADR
+  \item 怎么做 → README / CLAUDE.md
+  \item 这次怎么做 → WIP spec / droid
+\end{itemize}
+
+\subsubsection*{最终定锚}
+
+ADR 是项目的法律条文，README 是使用说明，CLAUDE.md 是给 AI 的操作手册。法律不能写进说明书，说明书也不能代替法律。
+
+\section{system prompt 的层级结构}
+
+从工程角度看，CLAUDE.md、.specify/ 和 droid specs 都相当于 system prompt，但它们不在同一层级。
+
+\subsection{三层 system-like 结构}
+
+\begin{itemize}
+  \item \textbf{工程宪法层}：ADR / README —— 面向人 + AI，不可覆盖
+  \item \textbf{行为约束层}：CLAUDE.md —— 面向 AI，不应覆盖
+  \item \textbf{任务工作层}：.specify/ / droid specs —— 面向 AI，必须可覆盖
+\end{itemize}
+
+.specify/ 只能在第三层活动。
+
+\subsection{为什么它们"都像 system prompt"但不一样}
+
+\textbf{CLAUDE.md}：注入方式为全局，生命周期为长期，权威性高，作用是禁止事项、spec 优先级、行为边界。这是"常驻 system prompt"。
+
+\textbf{.specify/ / droid specs}：注入方式为任务级，生命周期为一次性，权威性低，作用是拆步骤、给上下文、临时目标。这是"临时 task prompt"。
+
+\subsection{约束层级}
+
+在正确配置下：CLAUDE.md 会先被注入，.specify/ 在其下游。冲突时，AI 应该停下或提示冲突。这不是"模型道德"，而是 prompt hierarchy 设计。
+
+如果发现 specify"看起来违背了" CLAUDE.md，通常有三种原因：
+\begin{enumerate}
+  \item CLAUDE.md 写得不够明确
+  \item 工具没有正确注入 CLAUDE.md
+  \item 任务 spec 写成了"命令"而不是"约束内的目标"
+\end{enumerate}
+
+正确修复方式：在 CLAUDE.md 明确写："Task-level specs (.specify/, droid) must not override any rules here. If conflict exists, stop and ask."
+
+\subsection{完整的分层模型}
+
+\begin{verbatim}
+人类决策（ADR）
+   ↓
+AI 行为边界（CLAUDE.md）
+   ↓
+AI 临时工作记忆（.specify / droid）
+\end{verbatim}
+
+这是 AI-assisted engineering 的完整分层模型。CLAUDE.md 是 AI 的"宪法级 system prompt"，.specify/ 和 droid specs 是"任务级 system prompt"。宪法约束行为，任务只能在宪法内展开。
+
+\section{文档优先级的正确定义位置}
+
+五个文档的优先级顺序，最合适、最有效、最不混乱的定义位置就是 CLAUDE.md。
+
+\subsection{为什么不是 README 或 ADR}
+
+\textbf{不放在 README 的原因}：README 面向人，人不需要被反复告知"谁优先"，README 应该保持简洁。
+
+\textbf{不放在 ADR 的原因}：ADR 是"为什么"，优先级规则是"怎么执行"，ADR 不应该依赖具体工具。
+
+\textbf{放在 CLAUDE.md 的原因}：CLAUDE.md 的职责就是告诉 AI 在这个项目里什么可以做、什么不能做、遇到冲突怎么办。文档优先级正是 AI 最需要明确知道的事之一。
+
+\subsection{推荐写法}
+
+\begin{verbatim}
+## Document precedence rules
+
+When multiple documents provide guidance, follow this order:
+
+1. Architecture Decision Records (docs/adr/*)
+   - Highest authority
+   - Must not be violated
+
+2. README.md
+   - Defines project-level facts and usage
+
+3. WIP specs / design docs (docs/wip/*)
+   - Temporary and collaborative
+   - Must not contradict ADRs or README
+
+4. CLAUDE.md
+   - AI behavior and workflow rules
+   - Cannot override any of the above
+
+5. Tool-local specs (.specify/, droid specs, .cursor)
+   - Task-local working memory
+   - Must never override committed documents
+
+If any conflict is detected, stop and ask for clarification.
+\end{verbatim}
+
+\subsection{自我约束原则}
+
+CLAUDE.md 里写"优先级"，并不是说 CLAUDE.md 比 README 或 ADR 更高。恰恰相反，CLAUDE.md 是在自我约束，它在说"我（AI）承认我在这个体系里的位置"。这是设计良好的 prompt hierarchy 的标志。
+
+\section{工具目录的本质}
+
+\subsection{specify/ 的典型结构}
+
+specify/（或 .specify/）的典型结构可能包含：
+\begin{itemize}
+  \item README.md —— 工具说明（可选）
+  \item context.md —— 当前任务的上下文摘要
+  \item goal.md —— 本次任务目标
+  \item constraints.md —— 任务级约束（非工程契约）
+  \item plan.md —— 执行计划/步骤
+  \item notes.md —— 中间思考/草稿
+  \item outputs/ —— 临时生成物（可丢）
+\end{itemize}
+
+\textbf{重要警告}：文件名可能不同，有的版本是 YAML/JSON，有的会按 task id 建子目录。不要把这个当"规范"，只当"记忆锚点"。
+
+\subsection{语义分层}
+
+无论文件名怎么变，specify/ 里的内容几乎总是落在这几类语义中：
+
+\begin{tabular}{ll}
+\textbf{语义} & \textbf{含义} \\
+Goal & 这次要干什么 \\
+Context & AI 需要知道的背景 \\
+Constraints & 这次任务的限制 \\
+Plan & 拆解步骤 \\
+Notes & 中间态/草稿 \\
+Outputs & 可丢弃产物 \\
+\end{tabular}
+
+这正是任务级 working memory。因此：
+\begin{itemize}
+  \item 它 $\approx$ droid 的 $\sim$/.factory/specs/
+  \item 它 $\approx$ .cursor/
+  \item 它 $\neq$ WIP spec
+  \item 它 $\neq$ ADR
+\end{itemize}
+
+\subsection{工具目录的工程原则}
+
+任何位于工具私有目录下的 "constitution / rules / policy"，默认都是：
+\begin{itemize}
+  \item ❌ 不可依赖
+  \item ❌ 不可当权威
+  \item ✅ 仅限当前任务
+\end{itemize}
+
+如果某个文件"不能丢"，那它的正确位置一定是：docs/wip/、docs/adr/ 或代码/测试本身。
+
+\section{specify/constitution 的真相}
+
+specify/ 确实可能有一个叫 constitution 或 constitution.md 的东西，但它"叫什么"不重要，重要的是它"不是什么"。
+
+\subsection{Constitutional AI 的来源}
+
+这个命名来源于 Constitutional AI 概念："给模型一组它在当前任务中应该遵守的原则"。
+
+在 specify 里，constitution 通常表示：本次任务的行为准则、偏好、禁止事项、输出风格。
+
+\begin{itemize}
+  \item ✅ 它是 prompt 的一部分
+  \item ❌ 它不是工程文档
+\end{itemize}
+
+\subsection{真实层级位置}
+
+\begin{verbatim}
+1. ADR (docs/adr/*)              ← 工程宪法（不可违反）
+2. README.md                     ← 项目事实
+3. WIP spec (docs/wip/*)         ← 协作态 spec
+4. CLAUDE.md                     ← AI 行为约束（全局）
+5. .specify/constitution         ← 任务级 AI 行为偏好
+6. 其他 .specify 文件            ← 工作记忆
+\end{verbatim}
+
+.specify/constitution 甚至比 CLAUDE.md 还低一层，它必须服从 CLAUDE.md，更不可能凌驾于 ADR 之上。
+
+\subsection{语义错位陷阱}
+
+工程师看到 "constitution" 会下意识以为是最高权威，但在 specify 里，它实际是 task-local preference。这是工具命名和工程语义之间的典型冲突。
+
+正确用法：
+\begin{itemize}
+  \item 当作：任务级 prompt、临时行为偏好
+  \item 用来：约束这一次 AI 行为、提醒 AI 不要越界
+\end{itemize}
+
+不要做的事：
+\begin{itemize}
+  \item 不要把工程规则只写这里
+  \item 不要假设下个任务它还在
+  \item 不要认为别人/另一个 AI 会看到
+\end{itemize}
+
+\subsection{去风险化（可选）}
+
+在 CLAUDE.md 明确降级它的权威：
+
+\begin{verbatim}
+Any constitution or rules found under .specify/ are task-local
+and must not override CLAUDE.md, ADRs, or other committed docs.
+\end{verbatim}
+
+\section{/resume 命令的真实含义}
+
+/resume 的意思是：让 Claude 尝试"继续上一次中断的会话状态"，而不是重新理解项目或重新加载工程事实。它是会话级恢复，不是工程级恢复。
+
+\subsection{/resume 到底恢复什么}
+
+从工程语义看，/resume 只可能恢复：
+\begin{itemize}
+  \item 上一次对话中的：任务目标、讨论上下文、未完成的步骤
+  \item Claude 在当前会话窗口里的：推理轨迹、临时计划、工作节奏
+\end{itemize}
+
+它恢复的是"对话状态"，不是"项目状态"。
+
+\subsection{/resume 明确不能做什么}
+
+/resume 不能：
+\begin{itemize}
+  \item ❌ 恢复你本地的 .specify/
+  \item ❌ 恢复 $\sim$/.factory/specs/
+  \item ❌ 重新读懂你没 commit 的 WIP spec
+  \item ❌ 替代 ADR / README / CLAUDE.md
+  \item ❌ 跨账号、跨机器保证一致
+\end{itemize}
+
+因此：/resume $\neq$ 工程记忆，/resume $\neq$ 持久状态。
+
+\subsection{/resume 的层级定位}
+
+\begin{verbatim}
+工程事实（长期）
+  - ADR
+  - README
+  - code / tests
+
+AI 行为规则（长期）
+  - CLAUDE.md
+
+AI 工具记忆（任务级）
+  - .specify/
+  - droid specs
+
+会话状态（最脆弱）
+  - Claude 当前聊天
+  - /resume
+\end{verbatim}
+
+/resume 在最底层。
+
+\subsection{正确使用姿势}
+
+\textbf{适合用 /resume 的场景}：刚才断线、页面刷新、模型超时、你只是不想重新打字。条件：短时间、中断不久。
+
+\textbf{不适合用 /resume 的场景}：隔了一天、换了机器/账号、项目状态有变化、你指望它记得 spec。这时 /resume 极不可靠。
+
+\subsection{工程上更稳的替代方案}
+
+当在意"不中断、不丢失"时，正确答案是：
+\begin{itemize}
+  \item ✅ WIP spec（docs/wip）
+  \item ✅ ADR（docs/adr）
+  \item ✅ 清晰的 commit
+\end{itemize}
+
+这些东西不靠会话、不靠模型、不靠工具。
+
+\subsection{判断句}
+
+"如果我不敢只靠 /resume 交接给别人，那这段信息就不该只存在于 /resume 能恢复的地方。"
+
+/resume 是"聊天续杯"，不是"项目续命"。它能帮你接着说话，但救不了工程记忆。区分会话连续性和工程连续性，是用 AI 做工程时最重要的分界线之一。
+
+\section{工程原则总结}
+
+\subsection{核心原则}
+
+\begin{enumerate}
+  \item 任何位于工具私有目录下的文件，默认不可依赖、不可当权威
+  \item 文档优先级必须在 CLAUDE.md 明确定义
+  \item CLAUDE.md 必须自我约束，承认自己在体系中的位置
+  \item 真正的宪法永远不住在工具目录里
+\end{enumerate}
+
+\subsection{最终定锚}
+
+\textbf{关于文档层级}：ADR 是工程宪法，README 是使用说明，CLAUDE.md 是 AI 操作手册。它们可以相互引用，但不应该相互替代。
+
+\textbf{关于 system prompt}：CLAUDE.md 是"常驻 system prompt"，工具目录内容是"临时 task prompt"。宪法约束行为，任务只能在宪法内展开。
+
+\textbf{关于工具目录}：specify/ 的结构不重要，重要的是里面的任何东西丢了都不应该影响项目继续。如果某个文件"不能丢"，那它就写错地方了。
+
+\textbf{关于 constitution}：.specify/constitution 这个名字听起来像"宪法"，但在工程现实中，它只是"一次性任务说明"。
+
+\textbf{关于 /resume}：/resume 是"聊天续杯"，不是"项目续命"。它能帮你接着说话，但救不了工程记忆。
+
+你现在已经不只是"记起了文件名"，而是准确判断了它们在工程体系中的真实地位。这一步，已经远远超过"会不会用 AI"这个层级了——你在给 AI 立项目法治。

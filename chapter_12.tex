@@ -1,0 +1,395 @@
+% chapter_12.tex - Refactored
+% Lines 100398 to 109533 of original content
+{\small
+
+\subsection*{一、底层库场景下的 AI Agent 工程判断}
+
+在 transformers 这种“接口经常变、体量巨大、语义靠源码而不是注释”的库里，用 AI agent / vibe coding 的“性价比和安全性”反而低于古法手写 + 文档 + grep。
+
+\subsubsection*{1.1 场景特征分析}
+
+模型/底层库代码的特点：
+\begin{itemize}
+    \item 接口是软约定（不总写清楚）
+    \item 行为靠实现细节
+    \item 一点点错 = silent bug / 数值错 / 性能灾难
+    \item API 多、历史包袱重、同名函数多版本
+    \item 文档永远落后于实现
+    \item 接口不稳定、breaking change 频繁
+    \item PR / release / main 分支行为不一致
+\end{itemize}
+
+transformers 库的特殊性：
+\begin{itemize}
+    \item 代码路径深、side effect 多
+    \item inheritance / mixin 爆炸
+    \item hook / callback 横飞
+\end{itemize}
+
+\subsubsection*{1.2 为什么 AI agent 在此类场景下不可靠}
+
+AI agent 的知识几乎必然是“滞后 + 混合态”的：
+\begin{itemize}
+    \item 混合多个版本
+    \item 不知道哪些已废弃
+    \item 很容易“合理胡说”
+\end{itemize}
+
+AI agent 不会像人一样：
+\begin{itemize}
+    \item rg class\_name 跳进源码
+    \item 看 call graph
+    \item 追 commit diff
+\end{itemize}
+
+即使能，也做得慢、不可靠、容易 hallucinate。
+
+\subsubsection*{1.3 “古法开发”的实际含义}
+
+不是不用工具，而是用对工具：
+\begin{itemize}
+    \item IDE + LSP
+    \item grep / ripgrep
+    \item 看源码
+    \item 看 commit history
+    \item 跑最小复现脚本
+    \item 手写改动
+\end{itemize}
+
+这是“底层工程的 vibe”。
+
+\subsubsection*{1.4 适用域不同}
+
+Spec Agent 适用：
+\begin{itemize}
+    \item 自动化
+    \item 多文件协作
+\end{itemize}
+
+古法开发适用：
+\begin{itemize}
+    \item 单点接口
+    \item 高频变更
+    \item 模型行为一致性
+\end{itemize}
+
+两者面对的是两个完全不同的工程地形。
+
+\subsubsection*{1.5 一句话总结}
+
+在接口频繁变化、行为靠源码定义、错误不显性的模型库里，AI agent 的不确定性会被放大；所以经验工程师选择古法开发，不是保守，而是风控。
+
+\subsection*{二、AI Agent 的 LSP 能力分析}
+
+\subsubsection*{2.1 AI agent 确实可以接 LSP}
+
+现在的 agent 通常能用：
+\begin{itemize}
+    \item go-to-definition
+    \item find references
+    \item hover / type info
+    \item 基础 symbol 索引
+\end{itemize}
+
+但“有 LSP ≠ 好用 ≠ 可信”。差别在于谁在主导、谁在兜底。
+
+\subsubsection*{2.2 人用 LSP vs AI 用 LSP}
+
+人用 LSP 是：
+\begin{itemize}
+    \item 有明确怀疑点
+    \item 带着假设跳转
+    \item 看完实现立刻判断对错
+\end{itemize}
+
+AI 用 LSP 是：
+\begin{itemize}
+    \item 被动调用
+    \item 局部查询
+    \item 很难形成长期、稳定的心智模型
+\end{itemize}
+
+\subsubsection*{2.3 LSP 无法覆盖的场景}
+
+transformers 里常见问题：
+\begin{itemize}
+    \item 动态 dispatch
+    \item mixin / multiple inheritance
+    \item hook / callback
+    \item runtime condition 分支
+\end{itemize}
+
+这些很多只能靠：
+\begin{itemize}
+    \item 顺着源码读
+    \item 跑代码验证
+    \item 看历史改动背景
+\end{itemize}
+
+LSP 只能给“入口”，不能给“结论”。
+
+\subsubsection*{2.4 commit diff 是关键短板}
+
+人类工程师会习惯性地：
+\begin{itemize}
+    \item 看最近 commit
+    \item 看 PR 讨论
+    \item 看 breaking change 说明
+\end{itemize}
+
+AI agent 即使“能看”，也通常：
+\begin{itemize}
+    \item 不会默认去看
+    \item 不知道哪些 diff 是关键
+    \item 不擅长用 diff 修正已有假设
+\end{itemize}
+
+\subsubsection*{2.5 错误发现与兜底}
+
+人写代码时：
+\begin{itemize}
+    \item 心里知道“我可能错了”
+    \item 会主动 double check
+\end{itemize}
+
+AI agent：
+\begin{itemize}
+    \item 一旦形成错误假设
+    \item 很难自发推翻
+    \item 容易把错一路传播下去
+\end{itemize}
+
+在 silent bug 场景下尤其危险。
+
+\subsection*{三、DeepWiki：AI 文档工具}
+
+\subsubsection*{3.1 DeepWiki 是什么}
+
+DeepWiki 是一个把 GitHub 仓库自动索引成“可对话文档”的工具。它会解析 repo 的代码、结构、README、关键文件，让你可以直接用自然语言问：
+\begin{itemize}
+    \item 这个仓库是干嘛的？
+    \item 某个模块怎么用？
+    \item 某个类/函数在哪里定义、为什么这么设计？
+\end{itemize}
+
+\subsubsection*{3.2 核心价值}
+
+DeepWiki 的核心价值是“读库”，不是“写库”。它擅长的事情是：
+\begin{itemize}
+    \item 帮你快速理解一个大型 repo
+    \item 定位代码位置和模块职责
+    \item 总结当前版本的结构和约定
+\end{itemize}
+
+它不等同于 AI agent 自动改代码，而是更像一个“随时可问的 repo 专家”。
+
+\subsubsection*{3.3 与古法开发的关系}
+
+DeepWiki + 古法开发是“互补关系”。在 transformers 这类库里，更安全的工作流是：
+\begin{itemize}
+    \item 人类主导决策和改动
+    \item IDE/LSP/grep 做精确定位
+    \item DeepWiki 用来快速理解整体和上下文
+\end{itemize}
+
+而不是：
+\begin{itemize}
+    \item agent 自动生成改动
+    \item 人类事后兜底
+\end{itemize}
+
+\subsection*{四、TRAE 国内版与地域访问控制}
+
+\subsubsection*{4.1 403 错误的原因}
+
+TRAE 国内版官网是强地域访问控制。403 说明被判定为“非支持区域”。这和账号无关，就是区域策略。
+
+香港 IP ≠ 国内 IP。TRAE 国内版官网下载入口页面通常是按“大陆 / 非大陆”直接切的。
+
+\subsubsection*{4.2 可行的解决方案}
+
+方式 1（最稳，推荐）：国内网络代下载
+\begin{itemize}
+    \item 找一个在中国大陆的朋友 / 同事或一台国内云服务器
+    \item 打开 https://www.trae.com.cn/
+    \item 下载对应的 macOS / Windows 安装包
+    \item 通过文件传给你
+\end{itemize}
+
+方式 2：国内机器远程使用
+\begin{itemize}
+    \item 国内机器安装 Trae 国内版
+    \item 你用远程桌面 / VS Code Remote 操作
+\end{itemize}
+
+方式 3：换成“只用豆包 API，不用 Trae”
+\begin{itemize}
+    \item 直接走豆包 API
+    \item 在你当前环境自己封工具/agent
+    \item 完全绕开 Trae 的地域问题
+\end{itemize}
+
+\subsubsection*{4.3 在国内安装后带到香港的使用}
+
+可以在国内下载并安装 Trae 国内版，但回到香港后，“能不能用”取决于你用到 Trae 的哪一层能力。
+
+分层说明：
+\begin{enumerate}
+    \item 客户端本身：✅ 可以用。不会启动即崩，不会强制卸载。
+    \item 登录与基础功能：⚠️ 大概率可用，但不保证
+    \item 豆包模型调用：⚠️ 取决于当时策略（关键）
+    \item 更新与新功能：❌ 风险最高
+\end{enumerate}
+
+经验结论：在国内下载并完成首次登录，回到香港继续日常使用，但准备一个 fallback（国内机器 / 国内网络）。
+
+\subsection*{五、TRAE 命令行版本问题}
+
+\subsubsection*{5.1 结论}
+
+截至目前（2026-01-06），TRAE 没有官方提供的、独立的命令行（CLI）版本。
+
+\subsubsection*{5.2 原因}
+
+TRAE 的定位是「IDE + 内嵌 AI 能力」：
+\begin{itemize}
+    \item TRAE 本质是一个图形化 IDE（类似 VS Code 的分支/封装）
+    \item AI 能力是强绑定在 IDE 交互里的
+    \item 不是一个独立可调用的 CLI 工具
+\end{itemize}
+
+TRAE 的卖点是：
+\begin{itemize}
+    \item 上下文感知（编辑器状态）
+    \item 文件树
+    \item diff / patch
+    \item 人在回路里的交互
+\end{itemize}
+
+这些能力强依赖 IDE 运行态。
+
+\subsubsection*{5.3 替代方案}
+
+如果你真正想要的是 CLI 可脚本化、可自动化、能跑在服务器 / CI / SSH 里，那现实选择是：
+
+1）直接用模型 API（豆包 / OpenAI / Claude / DeepSeek，自己封 prompt / workflow）
+
+2）用已有的 agent CLI 框架（OpenAI Codex CLI、aider、continue（CLI 模式）、自建脚本 + LLM）
+
+\subsection*{六、GitHub Copilot 功能详解}
+
+\subsubsection*{6.1 New chat}
+
+最基础的 Copilot Chat，会话级对话窗口。
+
+能力特点：
+\begin{itemize}
+    \item 基于当前打开的文件 / 选区回答问题
+    \item 代码解释、补全、重写
+    \item 不自动跨文件执行修改
+    \item 不长期记忆上下文（换 chat 就没了）
+\end{itemize}
+
+适合：临时问问题、解释某段代码、小范围修改建议
+
+不适合：多文件重构、有状态的长期任务、复杂工程决策
+
+\subsubsection*{6.2 Agents}
+
+Copilot 的“多步任务执行模式”，但仍然是交互式 agent。
+
+能力特点：
+\begin{itemize}
+    \item 可以规划步骤
+    \item 可以连续读写多个文件
+    \item 可以执行“我打算做 A → 再做 B”
+    \item 每一步通常需要你确认或可回滚
+\end{itemize}
+
+本质：IDE 内的“半自动助手”、人在回路（human-in-the-loop）
+
+适合：小到中等规模改动、明确目标的 refactor、自动生成测试/文档
+
+不适合：无人值守执行、大规模一次性不可逆改动、高频自动化任务
+
+\subsubsection*{6.3 Spaces}
+
+一个“上下文容器”，不是 agent 本身。可以理解成给 Copilot / Agent 的一个“长期记忆 + 工作区”。
+
+能装什么：
+\begin{itemize}
+    \item 当前 repo
+    \item 特定子目录
+    \item 文档、说明、约束
+    \item 自定义背景信息（比如 coding style）
+\end{itemize}
+
+作用：让 Agent 在多轮对话中保持一致理解，避免每次都重新解释项目背景
+
+适合：中大型项目、多天/多周的连续工作、需要稳定上下文的 agent 任务
+
+不适合：一次性 quick question
+
+\subsubsection*{6.4 Spark（Preview）}
+
+GitHub 正在试验的“AI 驱动的高层工作流”，目前还是 Preview。
+
+目标：从“想法 / 需求”推导出代码结构、文件骨架、初始实现
+
+能力形态：
+\begin{itemize}
+    \item 比 Agents 更高一层
+    \item 偏“项目生成 / scaffold”
+    \item 偏 product / workflow，而不是写单个函数
+\end{itemize}
+
+适合：新项目起步、PoC / demo、从零生成结构化代码
+
+不适合：成熟项目的精细修改、需要严格一致性的底层代码、生产级自动化
+
+\subsubsection*{6.5 一句话总结}
+
+New chat：随问随答
+Agents：人在回路的多步助手
+Spaces：给 AI 一个“长期脑子”
+Spark：试验性的 AI 项目生成器
+
+它们都不是命令行工具，而是围绕 IDE 设计的交互式能力。
+
+\subsection*{七、spec-kit 与 Spec-Driven Development}
+
+\subsubsection*{7.1 spec-kit + Claude Code vs 手写 PRD + plan}
+
+手写 PRD + plan + CLAUDE.md 的特点：
+\begin{itemize}
+    \item 优点：完全可控、没有隐式流程、高度贴合工程习惯、Claude Code 行为“可预期”
+    \item 问题：强依赖个人 discipline，容易出现 PRD 和 plan 漂移、plan 和实现不一致、忘了补 checklist；多 feature / 多人时一致性迅速下降
+\end{itemize}
+
+spec-kit + Claude Code 的核心差异：
+\begin{itemize}
+    \item 把你现在靠自觉在做的事情，变成“强制、可追踪、可复用的流程”
+    \item 强制 artifact 链条（不能跳步）：constitution → spec → clarify → plan → tasks → implement
+    \item 明确“哪一步可以问不确定问题”
+    \item spec / plan / tasks 都是“机器可解析”的
+\end{itemize}
+
+\subsubsection*{7.2 spec-kit 作为“外挂程序”的可靠性}
+
+靠谱的地方：
+\begin{itemize}
+    \item 它不劫持模型：spec-kit 不替代 Claude Code、不包一层“魔法 agent”、只是生成目录结构/Markdown artifacts/shell 脚本
+    \item 它是“可删的”：可以保留 specs / plan / tasks.md，删除 CLI 和脚本，Claude Code 依然能继续用
+\end{itemize}
+
+CLAUDE.md：给人 + 给模型看的指导
+
+spec-kit 的 artifacts：给 agent 当“状态机”的
+
+这让 Claude Code 不会反复“忘记自己做过什么”、不容易重构时推翻前面的决定。
+
+\subsubsection*{7.3 对比总结}
+
+你现在的做法是“高质量手工 Spec-Driven”，spec-kit 是把这套方法变成“流程化 + 工具化 + 可复制”。
+
+} % end small

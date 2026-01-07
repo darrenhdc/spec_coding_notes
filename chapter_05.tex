@@ -1,0 +1,204 @@
+% chapter_05.tex
+\small
+
+\chapter{Claude Code Plan Mode 与 Spec-Coding Agents}
+
+\section{Plan Mode 的定位}
+
+Claude Code 的 Plan Mode，本质上就是：把「vibe $\to$ spec 的中间态」产品化了。它不是否定 vibe coding，而是试图解决 vibe coding 最大的工程缺陷。
+
+\subsection{Plan Mode 的真实定位}
+
+Plan Mode 在做一件事：在「纯 vibe」和「纯 spec」之间，建立一个「半结构化的中间态」。
+
+它提供的是：
+\begin{itemize}
+    \item 结构化的思考框架
+    \item 可审查的决策过程
+    \item 可复现的步骤
+\end{itemize}
+
+但它不提供：
+\begin{itemize}
+    \item 完整的工程 spec
+    \item 长期维护的契约
+    \item 团队级的规范
+\end{itemize}
+
+\subsection{Plan Mode 在 vibe / spec 光谱中的位置}
+
+如果画一条轴：纯 Vibe $-$\,-$-$ Plan Mode $-$\,-$-$ 纯 Spec
+
+Plan Mode 处在中间偏右，其特点是：
+\begin{itemize}
+    \item 仍然允许需求模糊
+    \item 仍然用自然语言
+    \item 仍然是人机对话驱动
+    \item 但不允许「直接拍脑袋写代码」
+\end{itemize}
+
+它是一个「vibe 的刹车系统」。
+
+\subsection{为什么 Plan Mode 会出现}
+
+\textbf{Vibe coding 在 scale 时必然崩}。vibe coding 的特点：demo 很爽，项目一大就失控。问题不在模型，而在：隐性假设、未对齐的理解、需求漂移。
+
+Plan Mode 的目标是解决：「你以为模型懂了，但它懂的是另一个东西。」
+
+反过来，\textbf{Spec 太重，不适合探索期}。让用户一开始就写 RFC、OpenAPI、状态机、不变量，用户直接跑了。
+
+Plan Mode 是一种折中：不要求你先会工程，但要求你在写代码前先点头确认理解。
+
+\subsection{Plan Mode vs Spec Coding}
+
+\begin{tabular}{lll}
+维度 & Plan Mode & Spec Coding \\
+\hline
+表达形式 & 自然语言为主 & 形式化 / 半形式化 \\
+可执行性 & ❌ 不能直接执行 & ✅ 可被验证 \\
+稳定性 & 中 & 高 \\
+是否可版本控制 & ⚠️ 勉强 & ✅ \\
+是否抗模型漂移 & ❌ & ✅ \\
+\end{tabular}
+
+Plan $\neq$ Spec，Plan 是「spec 的草稿」。
+
+\subsection{成熟使用方式}
+
+真正厉害的团队是这么用的：
+\begin{itemize}
+    \item Vibe：快速试方向
+    \item Plan Mode：冻结一次「共识理解」
+    \item Spec：把关键路径形式化
+    \item Code：让模型在约束里跑
+\end{itemize}
+
+Plan Mode 是 vibe $\to$ spec 的翻译器。
+
+\section{Plan Mode vs Spec-Coding Agent}
+
+Plan Mode 的 plan，本质上是「一次性对齐产物」；Spec-coding agent（比如 Factory 的 Droid）的 spec，是「可演化的一等工程资产」。这不是能力强弱问题，而是工程哲学完全不同。
+
+\subsection{Claude Code Plan Mode：为什么「不能自己改 plan」}
+
+在 Claude Code 里，Plan Mode 生成的 plan 是给人看、给人确认的，不是 agent 内部的可编辑状态。你想「改 plan」实际上是重新 prompt，重新生成一份新的 plan。它更像一次性的「共识快照」，而不是持续维护的文档。
+
+Anthropic 这么做是刻意的：
+\begin{itemize}
+    \item 避免用户以为这是「正式 spec」
+    \item 避免 plan 演化但代码不一致
+    \item 避免用户陷入「维护自然语言 spec 的幻觉」
+\end{itemize}
+
+\subsection{Spec-Coding Agent（Droid）的根本不同}
+
+Droid 的 spec 是：
+\begin{itemize}
+    \item 可编辑
+    \item 可 diff
+    \item 可版本控制
+    \item 可被 agent 反复读取、校验、修改
+\end{itemize}
+
+Spec 是 agent 的「世界模型」，而不是一次对话产物。
+
+\textbf{Spec 是一等公民}：在 Droid 里，Code $\neq$ 真理，Spec $>$ Code，agent 的职责是保持 code 与 spec 一致，而不是「猜你想要什么」。
+
+\textbf{Agent 可以自己发现 spec 问题}：Droid 可以写代码时发现冲突，回头修改 spec，再重新生成代码，形成一个闭环。这一步才是真正的 spec coding。
+
+\subsection{本质分水岭：有没有「可变的内部状态」}
+
+\begin{tabular}{lll}
+维度 & Plan Mode & Spec-Coding Agent \\
+\hline
+Plan / Spec 地位 & 输出给人看的 & Agent 的内部状态 \\
+是否可被 agent 修改 & ❌ & ✅ \\
+是否参与推理 & ❌（一次性） & ✅（持续） \\
+是否可长期维护 & ❌ & ✅ \\
+适合项目规模 & 小 / 中 & 中 / 大 \\
+\end{tabular}
+
+能不能「自己改 spec」，不是小功能，而是智能体级别的差异。
+
+\subsection{Plan Mode vs Droid 的产品定位}
+
+Spec-coding agent：学习成本高、心智负担大、适合专业团队。
+
+Plan Mode：普通开发者也能用、不改变工作流、风险可控。
+
+Plan Mode 是大众产品，Droid 是工程系统。
+
+\subsection{实用判断标准}
+
+「这个项目三个月后，我敢不敢让一个新模型只看 spec 就接手？」
+\begin{itemize}
+    \item 不敢 $\to$ Plan Mode 足够
+    \item 敢 $\to$ 你需要 Droid 这一类 spec-coding agent
+\end{itemize}
+
+一句话终极总结：Plan Mode 是「让模型先把话说清楚」，Spec-coding agent 是「让模型对说过的话负责」。
+
+\section{Spec-Coding Agents 生态}
+
+截至 2026 年初，真正意义上「把 spec 当一等工程资产、并允许 agent 自我修改 spec」的产品，Droid 依然是极少数中的极少数。
+
+\subsection{分层地图}
+
+\textbf{第一层：真 · Spec-Coding Agent（极少）}
+
+spec 是一等公民，spec 可编辑、可 diff，agent 可以修改 spec，code 必须服从 spec。
+
+\textbf{代表性产品}：
+
+1️⃣ Droid（Factory.ai）：Spec 是中心真理，Agent 维护 spec $\leftrightarrow$ code 一致性，可以：发现 spec 冲突、回滚 spec、重写实现。这是「范式级」的 spec coding。
+
+2️⃣ 一些内部 / 企业定制系统（未公开）：大厂内部（金融 / 防务 / 云服务），基于形式化 spec、DSL、状态机。但不对外，没有通用产品形态。
+
+公开、可用、通用的，基本只有 Droid。
+
+\textbf{第二层：半 Spec Agent（看起来很像，但差一口气）}
+
+有 spec 结构，但 spec 不是真正「可演化真理」，agent 不能对 spec 负责。
+
+典型代表：SWE-agent / AutoCodeRover / OpenDevin 有 task description、constraints，但 spec 是 prompt 不是长期资产，agent 不会维护它。这是「任务驱动 agent」，不是 spec coding。
+
+Devin（Cognition）：会规划、会分解任务，但 Plan $\neq$ Spec，没有可维护的工程不变量。Devin 是 autonomous worker，不是 spec executor。
+
+\textbf{第三层：Plan / Blueprint 工具（Claude Code 在这里）}
+
+显式 plan、人确认，但 agent 不维护 plan、plan 会过期。
+
+代表：Claude Code Plan Mode、Cursor 的 planning step、ChatGPT 的「let's plan first」。
+
+这是 vibe $\to$ spec 的过渡层。
+
+\textbf{第四层：「伪 spec」（营销用语，务必小心）}
+
+这些会用词如：「AI understands your requirements」、「Declarative development」、「No-code spec」，但实际上：spec = prompt，不可验证、不可回滚、不参与 agent 推理。
+
+和 spec coding 没有工程意义上的关系。
+
+\subsection{为什么「真正的 spec-coding agent」这么少？}
+
+原因有 4 个：
+
+\textbf{1️⃣ Spec 本身就难}：Spec 是最难的工程产物之一。人都写不好，更别说让 agent 维护。
+
+\textbf{2️⃣ 心智负担太高}：Spec-coding agent 要求用户接受「代码不是第一真理」，学会约束思维、不变量思维。这直接淘汰 90\% 用户。
+
+\textbf{3️⃣ Demo 不好看}：spec 收敛模型，不会「神奇写一切」，投资人和用户都不兴奋。
+
+\textbf{4️⃣ 责任与法律风险}：一旦 agent 修改 spec、承诺一致性，那就意味着更高的责任暗示、更复杂的合规问题。
+
+\subsection{一个非常残酷但真实的判断}
+
+Spec-coding agent 不是「下一个 Copilot」，而是「下一个 CI/CD 级别的基础设施」。
+
+所以：不会爆发、不会全民使用，但一旦成功，会深度锁定工程组织。
+
+\subsection{一句话终极总结}
+
+除了 Droid，目前几乎没有真正把「spec 作为可演化工程真理」的通用 spec-coding agent；绝大多数所谓竞品，仍停留在 plan 或 task 层。
+
+\vspace{1em}
+\normalsize

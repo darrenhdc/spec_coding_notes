@@ -1,0 +1,441 @@
+% chapter_14.tex
+\small
+\begin{verbatim}
+.specify/memory/constitution.md
+\end{verbatim}
+
+这是 Claude 长期遵守的规则文件。
+
+\section{Spec-Driven Demo: 最小但完整的 Todo CLI}
+
+\subsection{前置条件}
+
+\begin{itemize}
+    \item 已安装 specify-cli
+    \item 已安装 Claude Code（或支持 slash command 的 Claude）
+    \item 当前目录是未初始化的项目
+\end{itemize}
+
+\subsection{Step 0: 初始化 spec-kit}
+
+\begin{verbatim}
+mkdir todo-demo
+cd todo-demo
+specify init . --ai claude
+\end{verbatim}
+
+生成的目录结构：
+
+\begin{verbatim}
+todo-demo/
+├── .specify/
+│   ├── memory/
+│   │   └── constitution.md
+│   ├── scripts/
+│   └── templates/
+├── CLAUDE.md
+└── README.md
+\end{verbatim}
+
+\subsection{Step 1: 启动 Claude Code}
+
+在项目 root 目录启动 Claude Code，确认能看到 /speckit.* 命令。
+
+\subsection{Step 2: 写项目宪法}
+
+\begin{verbatim}
+/speckit.constitution
+Create simple, pragmatic principles:
+- Prefer clarity over abstraction
+- Keep dependencies minimal
+- Write code that is easy to read and modify
+- Use basic Python standard library only
+- Favor small functions and explicit logic
+\end{verbatim}
+
+生成 \texttt{.specify/memory/constitution.md}。
+
+\subsection{Step 3: 写功能 spec（最关键）}
+
+\begin{verbatim}
+/speckit.specify
+Build a simple command-line Todo application.
+Users can:
+- Add a todo item with text
+- List all todo items
+- Mark a todo item as completed
+
+Todos are stored locally on disk.
+This is a single-user tool and does not require authentication.
+The focus is correctness and simplicity, not performance.
+\end{verbatim}
+
+生成 \texttt{.specify/specs/001-todo-cli/spec.md}。此时还没有技术细节。
+
+\subsection{Step 4: 生成技术方案}
+
+\begin{verbatim}
+/speckit.plan
+Implement this as a Python CLI tool.
+Use argparse for command parsing.
+Persist todos in a local JSON file.
+The application should be runnable via `python todo.py`.
+\end{verbatim}
+
+生成 plan.md（可能还有 data-model.md / research.md）。
+
+\subsection{Step 5: 生成任务拆分}
+
+\begin{verbatim}
+/speckit.tasks
+\end{verbatim}
+
+生成 tasks.md，包含可执行步骤列表。
+
+\subsection{Step 6: 执行实现}
+
+\begin{verbatim}
+/speckit.implement
+\end{verbatim}
+
+Claude 按 tasks.md 顺序执行，创建 todo.py 并写入代码。
+
+最终目录结构：
+
+\begin{verbatim}
+todo-demo/
+├── todo.py
+├── todos.json
+└── .specify/
+\end{verbatim}
+
+手动测试：
+
+\begin{verbatim}
+python todo.py add "Buy milk"
+python todo.py list
+python todo.py done 1
+\end{verbatim}
+
+\subsection{核心体感}
+
+\begin{itemize}
+    \item Claude 没有跳步——每一步都有文件产物
+    \item 可随时打断/修改——改 spec → 重新 plan → 重新 tasks
+    \item 这些不是 Claude 的"记忆"——全在 repo 里，换 agent 也能继续
+\end{itemize}
+
+\section{交互范式转移：Vibe Coding vs Spec-Driven}
+
+\subsection{旧范式：Vibe Coding}
+
+典型流程：
+
+\begin{verbatim}
+你：我们来做个 X 吧
+Claude：可以，方案 A / B / C
+你：选 B
+Claude：开始写代码
+你：等等，这里不太对
+Claude：改
+你：顺便加个功能
+Claude：好
+\end{verbatim}
+
+特点：对话即执行，决策和实现混在一起，每句话都可能改变代码走向。
+
+常见问题：上下文漂移，Claude 推翻自己，改到后面不敢动了。
+
+\subsection{新范式：Spec-Driven + Claude}
+
+\begin{verbatim}
+你 ⇄ Claude：讨论 spec（what / why）
+你 ⇄ Claude：讨论 plan（how）
+你：确认 tasks
+你：/speckit.implement
+Claude：按计划执行
+\end{verbatim}
+
+关键变化：对话阶段 $\neq$ 执行阶段。对话时不写代码、不跑命令、不动 repo，只做产品决策、工程决策和约束声明。
+
+\subsection{角色变化}
+
+从「即时批准者」到「规范制定者」：
+
+\begin{itemize}
+    \item 以前：approve 某一行代码、某个方案
+    \item 现在：定义"允许出现的方案空间"、"禁止的行为"、"成功的标准"
+\end{itemize}
+
+这是工程负责人 / tech lead 的角色。
+
+\subsection{/speckit.implement 的本质}
+
+相当于一次"批量、受控、可回滚的自动 commit"：
+
+\begin{itemize}
+    \item 之前：Claude 只能"思考 + 写文档"
+    \item 之后：Claude 被允许执行
+    \item 执行范围被 tasks.md 严格限制，执行顺序已确定，不再临时加戏
+\end{itemize}
+
+\subsection{范式对比}
+
+\begin{center}
+\begin{tabular}{lcc}
+\hline
+维度 & Vibe Coding & Spec-Driven \\
+\hline
+approve 的对象 & 某个即时建议 & 整体设计 \\
+approve 的粒度 & 很细 & 很粗 \\
+是否随时写代码 & \checkmark & $\times$ \\
+是否允许中途漂移 & \checkmark & $\times$ \\
+执行是否可预测 & $\times$ & \checkmark \\
+\hline
+\end{tabular}
+\end{center}
+
+以前在批准"下一步"，现在在批准"全部路径"。
+
+\subsection{效率权衡}
+
+\begin{itemize}
+    \item 短期看：Spec-Driven 更慢
+    \item 长期看：Spec-Driven 更快（少返工、少"改到不敢改"、更容易中断/续上、可换 agent）
+\end{itemize}
+
+思考成本前移。
+
+\subsection{适用场景}
+
+不适合 Spec-Driven：快速试探、原型 demo、探索性问题、"我自己都不知道要啥"。
+
+适合 Spec-Driven：已知道目标、想要稳妥交付、项目会活很久、会被多次修改。
+
+\subsection{范式切换标志}
+
+当你发现自己不再纠结"Claude 怎么写代码"，而是纠结"我这个 spec 写得准不准"，说明已完成范式切换。
+
+\section{Git 与 Spec-Driven 的集成}
+
+\subsection{/speckit.implement 默认不自动 commit}
+
+默认行为：
+
+\begin{itemize}
+    \item \checkmark 读取 Git 仓库状态
+    \item \checkmark 在当前分支上工作
+    \item \checkmark 创建 / 修改文件
+    \item $\times$ 不自动 git commit
+    \item $\times$ 不自动 git push
+\end{itemize}
+
+Git 的控制权始终在你手里。
+
+\subsection{spec-kit 如何使用 Git}
+
+Git 主要用于定位 feature，而不是提交：
+
+\begin{enumerate}
+    \item 生成 feature 目录名（如 \texttt{.specify/specs/001-todo-cli/}）
+    \item 判断"当前在做哪个 feature"（假设一个 feature = 一个 Git 分支）
+    \item 不是用来自动提交（commit 是"工程决策"，不是 AI 决策）
+\end{enumerate}
+
+\subsection{可能看到 commit 的情况}
+
+\begin{enumerate}
+    \item 你明确要求 Claude 帮你提交
+    \item 使用高度自动化 agent（Droid / 类 Droid）
+    \item 教程中说 "You can ask Claude to create a PR"（ask 不是自动）
+\end{enumerate}
+
+\subsection{与现有 .git 不冲突}
+
+spec-kit 不修改 .git/、不改 config、不强制 branch 策略，只读 Git 信息并组织 spec 文件。可用已有仓库、monorepo、非标准分支名。
+
+\subsection{推荐 workflow}
+
+\begin{verbatim}
+git checkout -b feat/todo-cli
+
+# spec / plan / tasks / implement（Claude 干活）
+
+git diff  # review
+git commit -am "feat: add simple todo CLI"
+\end{verbatim}
+
+\section{回滚策略}
+
+\subsection{回滚方式}
+
+\begin{enumerate}
+    \item \textbf{Git 原生回滚}（最常用）：\texttt{git restore .} 或 \texttt{git restore todo.py}
+    \item \textbf{Feature 分支即"天然回滚点"}：\texttt{git branch -D feat/todo-cli}
+    \item \textbf{spec / plan 本身就是"可回滚状态"}：修改 spec / plan 后重新 implement
+    \item \textbf{Checkpoint commit}：手动打 checkpoint，失败时 \texttt{git reset --hard HEAD}
+    \item \textbf{git stash}：临时避险
+\end{enumerate}
+
+\subsection{设计哲学}
+
+spec-kit 不需要自动 commit，因为：
+
+\begin{itemize}
+    \item commit 是"你对世界负责的边界"，implement 只是执行
+    \item 如果 AI 自动 commit：commit message 谁负责？哪些文件算"完成"？哪些只是中间状态？
+\end{itemize}
+
+这些刻意留给人类。
+
+\subsection{范式差异}
+
+\begin{itemize}
+    \item Vibe coding：回滚 = 撤代码
+    \item Spec-driven：回滚 = 重跑执行
+\end{itemize}
+
+只要保留 spec.md、plan.md、tasks.md，就永远可以再来一次。spec 文件比代码更重要。
+
+\section{Spec 文档的管理}
+
+\subsection{必须提交 .specify/}
+
+.specify/ 下的 spec / plan / tasks 文档应该被提交到 Git，不是临时文件或草稿。
+
+\subsection{理由}
+
+\begin{enumerate}
+    \item \textbf{可回滚决策}：不提交只能回滚代码，不知道当初为什么这么写
+    \item \textbf{可审计性}：Git 历史显示设计在前、实现随后
+    \item \textbf{PR review 价值}：reviewer 先看 spec.md、plan.md，再看代码
+\end{enumerate}
+
+\subsection{常见错误做法}
+
+\begin{itemize}
+    \item[$\times$] .specify/ 加进 .gitignore
+    \item[$\times$] 只 commit 代码，不 commit spec
+    \item[$\times$] spec 只存在 Claude 对话里
+\end{itemize}
+
+\subsection{标准提交节奏}
+
+\begin{verbatim}
+git checkout -b feat/todo-cli
+
+# 1️⃣ spec / plan / tasks
+git add .specify
+git commit -m "docs(todo): define spec and plan"
+
+# 2️⃣ implement
+/speckit.implement
+
+# 3️⃣ review & adjust
+git diff
+
+# 4️⃣ final commit
+git add todo.py
+git commit -m "feat(todo): implement CLI"
+
+# 可选：rebase -i main squash docs + feat
+\end{verbatim}
+
+\subsection{判断原则}
+
+只要一个文件影响 Claude 的行为，它就必须进 Git。.specify/ 里的文件 100\% 符合这条。
+
+\section{Feature = Git 分支}
+
+\subsection{不是 Git 常识，是工程约定}
+
+"Feature = Git 分支"不是 Git 的内建规则，而是工作流约定。Git 只认识 commit 和 branch，工程才认识 feature。
+
+Git 的真正事实：branch 只是一个指向 commit 的指针。Git 不关心 feature、bug、release、task、ticket。
+
+\subsection{为什么成为事实标准}
+
+因为人类需要：
+
+\begin{enumerate}
+    \item 最简单的"隔离单位"：不污染 main、可随时丢弃、可并行工作
+    \item 天然回滚边界：\texttt{git branch -D feat/todo-cli} = "这个 feature 从未发生过"
+    \item 与 PR / Review 完美对齐：一个分支 $\to$ 一个 PR，一个 PR $\to$ 一个 feature
+    \item 与 spec-driven 极度契合：spec = 定义，plan = 路线，implement = 执行
+\end{enumerate}
+
+\subsection{spec-kit 的假设}
+
+spec-kit 假设（assume）这个约定，不是强制（enforce）。需要"稳定的 feature 边界"，Git 分支是最便宜、最成熟的边界。
+
+\subsection{不推荐的用法}
+
+\begin{itemize}
+    \item[$\times$] 所有功能都在 main 上做：spec 目录不断叠加、implement 相互干扰、回滚成本爆炸
+    \item[$\times$] 一个分支干多个 feature：spec 和代码无法对应、PR review 失焦
+    \item[$\checkmark$] 高级：一个 branch + feature flag（适合超大型团队、Trunk-based development）
+\end{itemize}
+
+\section{Pull Request (PR)}
+
+\subsection{PR 不是 Git 概念}
+
+PR 是协作平台（GitHub、GitLab、Bitbucket）提供的"变更提议机制"。Git 本身只有 commit、branch、merge，没有 PR。
+
+\subsection{PR 的定义}
+
+Pull Request = "我在一个分支上完成了一组有明确意图的变更，现在我请求你：理解它、评审它、决定是否把它并入主线"。
+
+\subsection{PR 的真正价值}
+
+\begin{itemize}
+    \item 一个"意图边界"：这次改动想干嘛？
+    \item 一个"讨论空间"：为什么这么设计？有没有更简单的？（不污染 commit 历史）
+    \item 一个"安全闸门"：看 diff、跑 CI、看 spec / plan、决定 merge / reject
+\end{itemize}
+
+merge 不是 PR 的重点，review 才是。
+
+\subsection{PR 的心智模型}
+
+PR = 代码的"说明书 + 审批单"
+
+\begin{itemize}
+    \item commit = 你动了什么
+    \item diff = 你具体怎么动的
+    \item PR 描述 = 你为什么要动
+    \item review = 别人帮你找问题
+    \item merge = 批准生效
+\end{itemize}
+
+\subsection{PR 生命周期}
+
+\begin{enumerate}
+    \item 建分支：\texttt{git checkout -b feat/todo-cli}
+    \item 写代码 + commit：\texttt{git commit -m "feat: add todo CLI"}
+    \item push 分支：\texttt{git push origin feat/todo-cli}
+    \item 打开 PR："我在 feat/todo-cli 上完成了一件事，想把它合到 main，请你帮我看看"
+    \item Review：别人看 diff、提 comment、要你改、CI 跑
+    \item Merge 或拒绝：merge $\to$ main 更新，close PR $\to$ 这件事作废
+\end{enumerate}
+
+\subsection{PR 在 Spec-Driven 中的位置}
+
+PR = "spec 是否被正确实现"的最终检查点。健康的 PR 应该让 reviewer 能看到：spec.md、plan.md、实现代码。Reviewer 不是猜你想干嘛，而是验证你有没有按 spec 做。
+
+\subsection{Feature + PR 的对齐}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+概念 & 对应 \\
+\hline
+Feature 分支 & Feature 意图 \\
+PR & Feature 讨论 \\
+PR 评论 & Feature 审批 \\
+PR merge & Feature 批准 \\
+\hline
+\end{tabular}
+\end{center}
+
+这是工程上极度优雅的一种对齐。
